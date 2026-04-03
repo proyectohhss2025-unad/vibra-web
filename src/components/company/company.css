@@ -1,0 +1,82 @@
+#companys table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-family: sans-serif;
+}
+
+#companys thead>tr {
+    font-size: small;
+}
+
+#companys th {
+    font-weight: 500;
+}
+
+#companys th:nth-child(1),
+#companys th:nth-child(2),
+#companys th:nth-child(3),
+#companys th:nth-child(4),
+#companys th:nth-child(5),
+#companys th:nth-child(6),
+#companys th:nth-child(7),
+#companys th:nth-child(8) {
+    text-align: center;
+}
+
+/* Set fixed widths for each column using `width` property */
+#companys th,
+#companys td:nth-child(1) {
+    /* First column */
+    width: 12% !important;
+    text-align: left !important;
+}
+
+#companys th,
+#companys td:nth-child(2) {
+    /* Second column */
+    width: 8% !important;
+}
+
+#companys th,
+#companys td:nth-child(3) {
+    /* Third column */
+    width: 16% !important;
+}
+
+#companys th,
+#companys td:nth-child(4) {
+    /* Third column */
+    width: 8% !important;
+}
+
+#companys th,
+#companys td:nth-child(5) {
+    /* Third column */
+    width: 16% !important;
+    text-align: left !important;
+}
+
+#companys th,
+#companys td:nth-child(6) {
+    /* Third column */
+    width: 18% !important;
+}
+
+#companys th,
+#companys td:nth-child(7) {
+    /* Third column */
+    width: 14% !important;
+}
+
+#companys th,
+#companys td:nth-child(8) {
+    /* Third column */
+    width: 4% !important;
+}
+
+#companys th,
+#companys td:nth-child(9) {
+    /* Third column */
+    width: 4% !important;
+}

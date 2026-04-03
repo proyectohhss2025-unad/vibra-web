@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.author-photo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.author-photo-container img {
+  max-width: 70px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.author-info {
+  text-align: center;
+}
+
+.author-info h2 {
+  font-size: 1rem !important;
+  margin-bottom: 5px;
+}
+
+.author-info p {
+  font-size: 0.7rem !important;
+  line-height: 1.5;
+}

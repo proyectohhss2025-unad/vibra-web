@@ -1,0 +1,150 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.sidebar {
+  background-color: #e8e8e8 !important;
+  border-right: 1px inset rgb(206, 202, 202);
+  transition: width 0.3s ease;
+  height: 100vh;
+  float: left;
+  top: 0;
+  left: 0;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 10%;
+}
+
+.sidebar li {
+  margin-bottom: 11px;
+}
+
+.sidebar a {
+  display: block;
+  padding: 10px 10px;
+  text-decoration: none;
+  color: #333;
+  transition: background-color 0.3s ease;
+}
+
+.sidebar a:hover {
+  font-weight: bolder;
+}
+
+.sidebar button {
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.sidebar button.active {
+  background-color: #e4e9ec;
+  color: white;
+}
+
+.rightSidebar {
+  background-color: #e8e8e8 !important;
+  border-right: 1px inset rgb(206, 202, 202);
+  transition: width 0.3s ease;
+  height: 100vh;
+  float: right;
+  top: 0;
+  right: 0;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.rightSidebar ul {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 10%;
+}
+
+.rightSidebar li {
+  margin-bottom: 11px;
+}
+
+.rightSidebar a {
+  display: block;
+  padding: 10px 10px;
+  text-decoration: none;
+  color: #333;
+  transition: background-color 0.3s ease;
+}
+
+.rightSidebar a:hover {
+  font-weight: bolder;
+}
+
+.rightSidebar button {
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.rightSidebar button.active {
+  background-color: #e4e9ec;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .container {
+    background-color: #e4e9ec;
+  }
+
+  .sidebar {
+    width: 80px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100vh !important;
+    overflow-y: auto;
+    transition: width 0.3s ease, left 0.3s ease;
+  }
+
+  .sidebar.active {
+    width: 250px;
+    left: 0;
+  }
+
+  .rightSidebar {
+    width: 80px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100vh !important;
+    overflow-y: auto;
+    transition: width 0.3s ease, left 0.3s ease;
+  }
+
+  .rightSidebar.active {
+    width: 250px;
+    left: 0;
+  }
+
+  .main-content {
+    margin-left: 250px;
+  }
+}
+
+.sidebar.active {
+  background-color: #337ab7;
+}
+
+.sidebar a.active {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.sidebar.collapsed {
+  width: 50px;
+}
+
+#toggle-sidebar {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}

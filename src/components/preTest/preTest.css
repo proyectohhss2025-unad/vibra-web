@@ -1,0 +1,50 @@
+.preTest-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.preTest-container .form-section {
+    margin-bottom: 2rem;
+}
+
+.preTest-container .question-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f9fafb;
+}
+
+.preTest-container .option-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.preTest-container .required-field::after {
+    content: '*';
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+/* Estilos para los botones de acción en la tabla */
+.action-blue {
+    background-color: #3b82f6;
+}
+
+.action-red {
+    background-color: #ef4444;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 1000;
+}

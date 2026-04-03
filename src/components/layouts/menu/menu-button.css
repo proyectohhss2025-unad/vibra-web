@@ -1,0 +1,38 @@
+/* Windows8StartMenu.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.submenu {
+    display: none;
+    padding-left: 18px;
+    margin-top: 28px !important;
+}
+
+.submenu.expanded {
+    display: block;
+    margin-top: 14px !important;
+    margin-bottom: 1px;
+}
+
+.submenu.expanded>li>a {
+    margin-top: -5px;
+    border-top-left-radius: 0.5em 1em 1em 0.5em;
+    border-left: 4px solid rgb(170, 169, 169);
+}
+
+.submenuc {
+    display: none;
+    padding-left: 8px;
+    margin-top: 28px !important;
+}
+
+.submenuc.collapsed>li>a {
+    border-left: 6px solid rgb(170, 169, 169) !important;
+    margin-left: 0px;
+}
+
+.submenuc.expanded>li>a {
+    border-left: 6px solid rgb(170, 169, 169);
+    margin-left: 0px;
+}

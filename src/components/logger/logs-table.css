@@ -1,0 +1,61 @@
+#logs-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-family: sans-serif;
+}
+
+#logs-table thead>tr {
+    font-size: small;
+}
+
+#logs-table th {
+    font-weight: 500;
+}
+
+#logs-table th:nth-child(1),
+#logs-table th:nth-child(2),
+#logs-table th:nth-child(3),
+#logs-table th:nth-child(4),
+#logs-table th:nth-child(5),
+#logs-table th:nth-child(6) {
+    text-align: center;
+}
+
+#logs-table th,
+#logs-table td:nth-child(1) {
+    width: 14% !important;
+    text-align: left !important;
+}
+
+#logs-table th,
+#logs-table td:nth-child(2) {
+    width: 8% !important;
+}
+
+#logs-table th,
+#logs-table td:nth-child(3) {
+    width: auto !important;
+}
+
+
+#logs-table th:nth-child(4) {
+    text-align: center !important;
+}
+
+#logs-table td:nth-child(4) {
+    width: 6% !important;
+    text-align: center !important;
+}
+
+#logs-table th,
+#logs-table td:nth-child(5) {
+    width: 8% !important;
+    text-align: left !important;
+}
+
+#logs-table th,
+#logs-table td:nth-child(6) {
+    width: auto !important;
+    text-align: left !important;
+}

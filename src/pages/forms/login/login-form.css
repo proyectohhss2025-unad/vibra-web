@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes rotate {
+    0% {
+        transform: rotateZ(0)
+    }
+
+    to {
+        transform: rotateZ(360deg)
+    }
+}
+
+@keyframes slide-tr {
+    0% {
+        transform: translateY(0) translateX(0)
+    }
+
+    to {
+        transform: translateY(-2px) translateX(2px)
+    }
+}
+
+@keyframes open {
+    0% {
+        transform: translateX(10px) scale(0);
+        transform-origin: 50% 100%
+    }
+
+    to {
+        transform: scale(1);
+        transform-origin: 50% 100%
+    }
+}
+
+@keyframes check {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@layer utilities {
+    .animate-sunrise {
+        animation: sunrise 2s ease-out forwards;
+    }
+}
+
+@keyframes sunrise {
+    0% {
+        transform: scale(0.5) translateY(50px) rotate(-10deg);
+        opacity: 0;
+        filter: blur(5px);
+    }
+
+    50% {
+        opacity: 0.5;
+        filter: blur(2px);
+    }
+
+    100% {
+        transform: scale(1) translateY(0) rotate(0deg);
+        opacity: 1;
+        filter: blur(0);
+    }
+}
+
+/* Animación de las líneas (rayos) para hacerlas aparecer una por una */
+.ray {
+    stroke-width: 2;
+    stroke: white;
+    opacity: 0;
+    animation: fade-in 0.5s forwards, blink-color 1s infinite alternate;
+}
+
+/* Agregar retraso para cada línea */
+.delay-1 {
+    animation-delay: 0.1s;
+}
+
+.delay-2 {
+    animation-delay: 0.3s;
+}
+
+.delay-3 {
+    animation-delay: 0.5s;
+}
+
+.delay-4 {
+    animation-delay: 0.7s;
+}
+
+.delay-5 {
+    animation-delay: 0.9s;
+}
+
+.delay-6 {
+    animation-delay: 1.1s;
+}
+
+.delay-7 {
+    animation-delay: 1.3s;
+}
+
+.delay-8 {
+    animation-delay: 1.5s;
+}
+
+/* Animación para hacer que cada línea aparezca */
+@keyframes fade-in {
+    to {
+        opacity: 1;
+    }
+}
+
+/* Animación de parpadeo de colores */
+@keyframes blink-color {
+    0% {
+        stroke: #FF5733;
+    }
+
+    /* Naranja */
+    50% {
+        stroke: #33FF57;
+    }
+
+    /* Verde */
+    100% {
+        stroke: #3357FF;
+    }
+
+    /* Azul */
+}
+
+.otp-input-container {
+    justify-content: space-between;
+    align-items: center;
+    width: 300px;
+    margin: 0 auto;
+}
+
+.otp-input-container input {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    text-align: center;
+    font-size: 18px;
+    margin: 0 5px;
+}
+
+.otp-input-container input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #007bff;
+}
+
+.otp-input-container input::-webkit-outer-focus-ring {
+    outline: none;
+}
+
+.otp-input-container button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 20px auto;
+}
+
+.otp-input-container p {
+    border: none;
+    padding: 50px 10px;
+}
+
+@media (max-width: 768px) {}

@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.modal {
+    @apply fixed top-0 left-0 w-full h-full overflow-auto bg-gray-500 bg-opacity-75 flex justify-center items-center;
+}
+
+.modal-content {
+    @apply w-full p-6 bg-white rounded-md shadow-md;
+}

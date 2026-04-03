@@ -1,0 +1,104 @@
+#permissions table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-family: sans-serif;
+}
+
+#permissions th {
+    padding: 4px !important;
+    font-weight: lighter;
+}
+
+#permissions thead>tr {
+    font-size: small;
+}
+
+
+#permissions th:nth-child(1),
+#permissions th:nth-child(2),
+#permissions th:nth-child(3),
+#permissions th:nth-child(4),
+#permissions th:nth-child(5),
+#permissions th:nth-child(6),
+#permissions th:nth-child(7),
+#permissions th:nth-child(8),
+#permissions th:nth-child(9),
+#permissions th:nth-child(10),
+#permissions th:nth-child(11) {
+    text-align: center;
+}
+
+/* Set fixed widths for each column using `width` property */
+#permissions th,
+#permissions td:nth-child(1) {
+    /* First column */
+    text-align: center;
+    width: 4% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(2) {
+    /* Second column */
+    width: 15% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(3) {
+    /* Third column */
+    width: 29% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(4) {
+    /* Third column */
+    width: 8% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(5) {
+    /* Third column */
+    width: 8% !important;
+    text-align: center;
+}
+
+#permissions th,
+#permissions td:nth-child(6) {
+    /* Third column */
+    width: 10% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(7) {
+    /* Third column */
+    width: 10% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(8) {
+    /* Third column */
+    width: 4% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(9) {
+    /* Third column */
+    width: 4% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(10) {
+    /* Third column */
+    width: 4% !important;
+}
+
+#permissions th,
+#permissions td:nth-child(11) {
+    /* Third column */
+    width: 4% !important;
+}
+
+#permissions .table-row-selected {
+    background-color: burlywood;
+    /* Color de fondo para la fila seleccionada */
+}

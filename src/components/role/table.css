@@ -1,0 +1,113 @@
+#roles table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-family: sans-serif;
+}
+
+#roles th {
+    padding: 4px !important;
+    font-weight: lighter;
+}
+
+#roles thead>tr {
+    font-size: small;
+}
+
+#roles th:nth-child(1),
+#roles th:nth-child(2),
+#roles th:nth-child(3),
+#roles th:nth-child(4),
+#roles th:nth-child(5),
+#roles th:nth-child(6),
+#roles th:nth-child(7),
+#roles th:nth-child(8),
+#roles th:nth-child(9),
+#roles th:nth-child(10),
+#roles th:nth-child(11),
+#roles th:nth-child(12) {
+    text-align: center;
+}
+
+#roles th,
+#roles td:nth-child(1) {
+    /* First column */
+    text-align: center;
+    width: 4% !important;
+}
+
+#roles th,
+#roles td:nth-child(2) {
+    /* Second column */
+    width: 12% !important;
+}
+
+#roles th,
+#roles td:nth-child(3) {
+    /* Third column */
+    width: 23% !important;
+}
+
+#roles th,
+#roles td:nth-child(4) {
+    /* Third column */
+    width: 5% !important;
+    text-align: center;
+}
+
+#roles th,
+#roles td:nth-child(5) {
+    /* Third column */
+    width: 5% !important;
+    text-align: center;
+}
+
+#roles th,
+#roles td:nth-child(6) {
+    /* Third column */
+    width: 10% !important;
+}
+
+#roles th,
+#roles td:nth-child(7) {
+    /* Third column */
+    width: 10% !important;
+}
+
+#roles td:nth-child(8) {
+    /* Third column */
+    width: 15% !important;
+}
+
+#roles th,
+#roles td:nth-child(9) {
+    /* Third column */
+    width: 4% !important;
+    text-align: center;
+}
+
+#roles th,
+#roles td:nth-child(10) {
+    /* Third column */
+    width: 4% !important;
+    align-items: center;
+}
+
+#roles th,
+#roles td:nth-child(11) {
+    /* Third column */
+    width: 4% !important;
+    text-align: center;
+}
+
+#roles th,
+#roles td:nth-child(12) {
+    /* Third column */
+    width: 4% !important;
+    text-align: center;
+}
+
+#roles .table-row-selected {
+    background-color: burlywood;
+    /* Color de fondo para la fila seleccionada */
+}

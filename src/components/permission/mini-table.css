@@ -1,0 +1,55 @@
+table#mini-table-permission {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-family: sans-serif;
+}
+
+th {
+    padding: 4px !important;
+    font-weight: lighter;
+}
+
+thead>tr {
+    font-size: small;
+}
+
+
+#mini-table-permission th:nth-child(1),
+#mini-table-permission th:nth-child(2),
+#mini-table-permission th:nth-child(3),
+#mini-table-permission th:nth-child(4) {
+    text-align: center;
+}
+
+/* Set fixed widths for each column using `width` property */
+#mini-table-permission th,
+#mini-table-permission td:nth-child(1) {
+    /* First column */
+    text-align: center;
+    width: 10% !important;
+}
+
+#mini-table-permission th,
+#mini-table-permission td:nth-child(2) {
+    /* First column */
+    width: 30% !important;
+}
+
+#mini-table-permission th,
+#mini-table-permission td:nth-child(3) {
+    /* Second column */
+    width: 55% !important;
+}
+
+#mini-table-permission th,
+#mini-table-permission td:nth-child(4) {
+    /* Third column */
+    width: 5% !important;
+}
+
+
+.table-row-selected {
+    background-color: burlywood;
+    /* Color de fondo para la fila seleccionada */
+}

@@ -1,0 +1,25 @@
+/* 404.module.css */
+
+.not-found-page {
+    @apply flex flex-col items-center justify-center min-h-screen bg-gray-800 text-white;
+  }
+  
+  .not-found-page h1 {
+    @apply text-5xl font-extrabold mb-4;
+  }
+  
+  .not-found-page p {
+    @apply text-lg mb-4;
+  }
+  
+  .not-found-page ul {
+    @apply list-disc;
+  }
+  
+  .not-found-page li {
+    @apply text-lg mb-2;
+  }
+  
+  .not-found-page a {
+    @apply text-blue-500;
+  }

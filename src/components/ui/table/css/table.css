@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* DataTable.css */
+h1.h1-2 {
+  font-size: 2rem !important;
+}
+
+.table {
+  @apply w-full mx-auto overflow-auto;
+}
+
+.table thead th {
+  @apply bg-gray-200 text-gray-800 font-bold py-1 px-1;
+}
+
+.table tbody tr {
+  @apply bg-white;
+}
+
+.table tbody td {
+  @apply py-1 px-1;
+}
+
+.table th,
+.table td {
+  @apply text-left;
+}
+
+
+table {
+  width: 100%;
+  border-collapse: collapse !important;
+  margin: 10px auto;
+  font-family: sans-serif;
+}
+
+th,
+td {
+  padding: 2px 6px;
+  /* Reduce padding for a more compact look
+  border: 1px solid #eee; */
+  text-align: left;
+}
+
+th {
+  background-color: transparent;
+}
+
+
+/* Set fixed widths for each column using `width` property */
+th,
+td:nth-child(1) {
+  /* First column */
+  width: 80px;
+}
+
+th,
+td:nth-child(2) {
+  /* Second column */
+  width: 250px;
+}
+
+th,
+td:nth-child(3) {
+  /* Third column */
+  width: 80px;
+}
+
+th,
+td:nth-child(4) {
+  /* Third column */
+  width: 200px;
+}
+
+th,
+td:nth-child(5) {
+  /* Third column */
+  width: 200px;
+}
+
+th,
+td:nth-child(6) {
+  /* Third column */
+  width: 60px;
+}
+
+th,
+td:nth-child(7) {
+  /* Third column */
+  width: 60px;
+}
+
+/* 
+button {
+  background-color: #337ab7;
+  color: white;
+  border: none;
+  border-radius: 4px;
+cursor: pointer;
+font-size: 0.7rem;
+transition: background-color 0.3s ease;
+display: inline;
+margin-left: 3px;
+}
+
+button:hover {
+  background-color: #286090;
+}
+
+Optional: Responsive Design */
+@media (max-width: 768px) {
+  table {
+    font-size: 14px;
+  }
+
+  th,
+  td {
+    padding: 4px 6px;
+  }
+
+  button {
+    padding: 2px 4px;
+    font-size: 12px;
+  }
+}
+
+.main-content {
+  width: 80%;
+  display: inline-block;
+}
+
+button.action-blue {
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+button.action-blue button.active {
+  background-color: #337ab7;
+  color: white;
+}
+
+button.action-red {
+  padding: 5px 10px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+}
+
+button.action-red button.active {
+  background-color: #bb2b07;
+  color: white;
+}

@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#homologate {
+    height: auto;
+}
+
+.homologate button {
+    color: white;
+}
+
+#view-crossing {}
+
+.view-crossing button {
+    color: white;
+}
+
+/*.view-crossing {
+    margin: 2rem auto;
+    border: 1px solid #aaa;
+    height: 300px;
+    width: 90%;
+    max-width: 400px;
+    background: #f1f2f3;
+    overflow: auto;
+    box-sizing: border-box;
+    padding: 0 1rem;
+}*/
+
+.view-crossing::-webkit-scrollbar {
+    -webkit-appearance: none;
+}
+
+.view-crossing::-webkit-scrollbar:vertical {
+    width: 10px;
+}
+
+.view-crossing::-webkit-scrollbar-button:increment,
+.view-crossing::-webkit-scrollbar-button {
+    display: none;
+}
+
+.view-crossing::-webkit-scrollbar:horizontal {
+    height: 10px;
+}
+
+.view-crossing::-webkit-scrollbar-thumb {
+    background-color: #797979;
+    border-radius: 20px;
+    border: 2px solid #f1f2f3;
+}
+
+.view-crossing::-webkit-scrollbar-track {
+    border-radius: 10px;
+}
+
+
+#toggle-link {
+    display: block;
+    /* margin-top: 6px;
+    margin-bottom: 10px;
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    text-decoration: none;
+    color: #337ab7;
+    cursor: pointer;*/
+}
+
+#toggle-link:hover {
+    /*background-color: #f6f8fa;
+    color: #007bff;*/
+}
+
+.json-block {
+    text-wrap: wrap;
+    background-color: #f6f8fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    padding: 16px;
+    white-space: pre;
+}

@@ -1,0 +1,49 @@
+/* notifications.css */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    padding: 15px 20px;
+    border-radius: 5px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.3s ease-in-out;
+}
+
+.notification.success {
+    background-color: #dff0d8;
+    color: #3c763d;
+}
+
+.notification.info {
+    background-color: #d1e7f2;
+    color: #38a8f2;
+}
+
+.notification.warning {
+    background-color: #ffc107;
+    color: #dc3545;
+}
+
+.notification.error {
+    background-color: #f44336;
+    color: #fff;
+}
+
+.notification.close-button {
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.fade-out {
+    opacity: 1;
+    transition: opacity 2s ease-in-out;
+}
+
+.fade-out.hidden {
+    opacity: 0;
+    display: none;
+}

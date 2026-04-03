@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#profile {
+  padding: 50px 0;
+}
+
+#profile h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.profile-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto;
+}
+
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 20px 0;
+}
+
+.profile-header img {
+  max-width: 150px;
+  margin-right: 20px;
+  border-radius: 50%;
+}
+
+.profile-header h2 {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.profile-header p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+
+.profile-info {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 800px;
+  margin: 20px 0;
+}
+
+
+.profile-section {
+  flex: 1 1 auto;
+  margin: 10px;
+}
+
+.profile-section h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.profile-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.profile-section ul li {
+  margin-bottom: 5px;
+}
+
+
+.profile-footer {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 20px 0;
+}
+
+.profile-footer a {
+  margin: 0 10px;
+  font-size: 24px;
+  color: #0073b7;
+  transition: 0.2s ease-in-out;
+}
+
+.profile-footer a:hover {
+  color: #ff4081;
+}
+
+.profile-header a {
+  margin: 0;
+}
+
+.rounded-circle {
+  border-radius: 50%;
+}
+
+.fab {
+  font-family: "Font Awesome 5 Free", 'Courier New', Courier, monospace;
+  font-weight: 900;
+}
+
+/* Media queries */
+
+@media (max-width: 768px) {
+  .profile-info {
+    flex-direction: column;
+  }
+}
+
+.profile-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.profile-title svg {
+  position: absolute;
+  right: -10%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  fill: #0073b7;
+  transition: 0.3s ease-in-out;
+}
+
+.profile-title:hover svg {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.buttons-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.buttons-container a {
+  margin: 0 10px;
+  width: 150px;
+  text-align: center;
+}
+
+.buttons-container a:hover {
+  background-color: rgb(16, 70, 92);
+}

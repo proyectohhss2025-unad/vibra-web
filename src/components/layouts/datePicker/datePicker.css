@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos adicionales para el componente FechaPicker */
+.datepicker-container {
+  /* Estilos para el contenedor del calendario */
+}
+
+.datepicker-calendar {
+  /* Estilos para el calendario */
+}
+
+.datepicker-calendar-day {
+  /* Estilos para los días del calendario */
+}

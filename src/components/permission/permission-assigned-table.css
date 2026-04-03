@@ -1,0 +1,49 @@
+table#permission-assigned-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px auto;
+    font-family: sans-serif;
+}
+
+th {
+    padding: 4px !important;
+    font-weight: lighter;
+}
+
+thead>tr {
+    font-size: small;
+}
+
+
+#permission-assigned-table th:nth-child(1),
+#permission-assigned-table th:nth-child(2),
+#permission-assigned-table th:nth-child(3) {
+    text-align: center;
+}
+
+/* Set fixed widths for each column using `width` property */
+#permission-assigned-table th,
+#permission-assigned-table td:nth-child(1) {
+    /* First column */
+    text-align: center;
+    width: 60px !important;
+}
+
+#permission-assigned-table th,
+#permission-assigned-table td:nth-child(2) {
+    /* First column */
+    width: 140px !important;
+}
+
+#permission-assigned-table th,
+#permission-assigned-table td:nth-child(3) {
+    /* Second column */
+    width: 40px !important;
+    text-align: center;
+}
+
+
+.table-row-selected {
+    background-color: burlywood;
+    /* Color de fondo para la fila seleccionada */
+}
