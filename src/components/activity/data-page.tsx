@@ -11,6 +11,7 @@ import { useTabs } from '@/services/contexts/tabs-context';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { copyContent } from '@/utils/string';
 import { ArrowCircleLeftIcon, InformationCircleIcon, PlusCircleIcon, RefreshIcon, SaveAsIcon } from '@heroicons/react/solid';
+
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import "../../../app/globals.css";
@@ -202,25 +203,35 @@ const ActivityDataPage: React.FC = () => {
                     </CardContent>
                 </Card>
             </div>
-            <Modal isOpen={showModal} onClose={handleCloseModal}>
-                <div className="p-4">
-                    <h2 className="text-xl font-bold mb-4">Confirmar cambio de estado</h2>
-                    <p>¿Está seguro que desea cambiar el estado de la actividad &quot;{activityData.title}&quot;?</p>
-                    <p className="mt-2 text-sm text-gray-500">
-                        {activityData?.isActive
-                            ? 'La actividad será desactivada y no estará disponible para su uso.'
-                            : 'La actividad será activada y estará disponible para su uso.'}
-                    </p>
-                    <div className="flex justify-end mt-4">
-                        <button
-                            className="mr-2 px-4 py-2 bg-gray-300 rounded-md"
-                            onClick={handleCloseModal}
-                        >
+            <Modal isOpen={showModal} onClose={handleCloseModal} classSize='max-w-md'>
+                <div className="border-b border-gray-900/10 pb-12">
+                    <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                        <div className="col-span-full flex items-center">
+                            <InformationCircleIcon name="info" className="h-6 w-10 text-blue-500" color="#ff0000" />
+                            <p className="text-gray-500">¿Estás seguro de que quieres realizar esta acción?</p>
+                        </div>
+                        <div className="col-span-full text-sm">
+                            <p className="text-gray-500">La configuración actual es {activityData?.isActive ? 'activa' : 'inactiva'}, ¿quieres {activityData?.isActive ? 'desactivar' : 'activar'}la?</p>
+                            <p className="text-gray-500 font-semibold">Actividad:</p> <strong>{activityData?.title}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-4 flex items-center justify-end gap-x-6">
+                    <div className="relative">
+                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none pr-4">
+                            <ArrowCircleLeftIcon name="cancel" className="h-6 w-8 text-white" color="#FFFFFF" />
+                        </div>
+                        <button onClick={handleCloseModal} type="button" className="bg-gray-500 hover:bg-blue-500 rounded-md px-3 py-1.5 pl-12 text-sm font-semibold leading-6 text-white">
                             Cancelar
                         </button>
+                    </div>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-4">
+                            <SaveAsIcon name="confirm" className="h-6 w-8 text-white-500" color="#FFFFFF" />
+                        </div>
                         <button
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md"
                             onClick={() => handleUpdateStatus(activityData)}
+                            className="rounded-md bg-blue-600 px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                             Confirmar
                         </button>

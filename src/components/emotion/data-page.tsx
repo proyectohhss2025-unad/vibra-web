@@ -10,7 +10,7 @@ import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { copyContent } from '@/utils/string';
-import { PlusCircleIcon, RefreshIcon } from '@heroicons/react/solid';
+import { ArrowCircleLeftIcon, InformationCircleIcon, PlusCircleIcon, RefreshIcon, SaveAsIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import "../../../app/globals.css";
@@ -173,12 +173,12 @@ const EmotionDataPage: React.FC = () => {
                             { name: 'CopyID', handler: handleCopy, color: 'white' },
                             { name: 'Edit', handler: handleEdit, color: '#d1e7f2' },
                             { name: 'Status', handler: handleOpenModal, color: 'white' }]}>
-                            <th>{getSafeKeyFromStorage('Name')}</th>
-                            <th>{getSafeKeyFromStorage('Description')}</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
                             <th>Orientación</th>
                             <th>Icono</th>
                             <th>Porcentaje</th>
-                            <th>{getSafeKeyFromStorage('Active')}</th>
+                            <th>Activo</th>
                         </Table>
                         <Pagination
                             currentPage={currentPage}
@@ -190,18 +190,38 @@ const EmotionDataPage: React.FC = () => {
                     </CardContent>
                 </Card>
             </div>
-            <Modal
-                isOpen={showModal}
-                onClose={handleCloseModal}
-                title={`¿Desea cambiar el estado de la emoción ${emotionData?.name}?`}
-                onConfirm={() => handleActivate(emotionData)}
-            >
-                <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                        {emotionData?.isActive
-                            ? 'La emoción será desactivada y no estará disponible para su uso.'
-                            : 'La emoción será activada y estará disponible para su uso.'}
-                    </p>
+            <Modal isOpen={showModal} onClose={handleCloseModal} classSize='max-w-md'>
+                <div className="border-b border-gray-900/10 pb-12">
+                    <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+                        <div className="col-span-full flex items-center">
+                            <InformationCircleIcon name="info" className="h-6 w-10 text-blue-500" color="#ff0000" />
+                            <p className="text-gray-500">¿Estás seguro de que quieres realizar esta acción?</p>
+                        </div>
+                        <div className="col-span-full text-sm">
+                            <p className="text-gray-500">La configuración actual es {emotionData?.isActive ? 'activa' : 'inactiva'}, ¿quieres {emotionData?.isActive ? 'desactivar' : 'activar'}la?</p>
+                            <p className="text-gray-500 font-semibold">Emoción:</p> <strong>{emotionData?.name}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-4 flex items-center justify-end gap-x-6">
+                    <div className="relative">
+                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none pr-4">
+                            <ArrowCircleLeftIcon name="cancel" className="h-6 w-8 text-white" color="#FFFFFF" />
+                        </div>
+                        <button onClick={handleCloseModal} type="button"
+                            className="bg-gray-500 hover:bg-blue-500 rounded-md px-3 py-1.5 pl-12 text-sm font-semibold leading-6 text-white">
+                            Cancelar
+                        </button>
+                    </div>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-4">
+                            <SaveAsIcon name="confirm" className="h-6 w-8 text-white-500" color="#FFFFFF" />
+                        </div>
+                        <button onClick={() => handleActivate(emotionData)}
+                            className="rounded-md bg-blue-600 px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                            Confirmar
+                        </button>
+                    </div>
                 </div>
             </Modal>
         </>

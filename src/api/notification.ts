@@ -3,7 +3,7 @@ import axios from 'axios';
 
 import { Notification } from '@/models/notification.entity';
 import { User } from '@/models/user.entity';
-import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
+import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import logger from '../config/logger-dev';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -89,11 +89,16 @@ export const getAllNotifications = async (currentPage: number, pageSize: number,
 
 export const getAll = async (currentPage: number, pageSize: number) => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/notifications/all?page=${currentPage}&rows=${pageSize}`);
+        const response = await axios.get(`${configAPI.baseURL}/api/notifications/all?page=${currentPage}&rows=${pageSize}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        });
         return response.data;
+        
     } catch (error) {
         logger.error('Error:', error);
-        return null;
+        return { notifications: [], total: 0 };
     }
 }
 
@@ -126,3 +131,27 @@ export const getCountAllNotificationsByDay = async () => {
         return null;
     }
 }
+
+/**
+ * Gets unread notifications count for the current user
+ * @returns The count of unread notifications or 0 if there was an error
+ */
+export const getUnreadCount = async () => {
+  try {
+    const token = getSafeKeyFromStorage('token');   
+    if (!token) {
+      logger.error('No token found in storage');
+      return 0;
+    }
+    const response = await axios.get(`${configAPI.baseURL}/api/notifications/unread/count/1`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}), 
+      },
+    });
+    return response.data;
+  } catch (error) {
+    logger.error('Error getting unread count:', error);
+    return 0;
+  }
+};

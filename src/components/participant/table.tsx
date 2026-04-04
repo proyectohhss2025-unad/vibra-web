@@ -37,17 +37,17 @@ const TableParticipant: React.FC<TableProps> = ({ data, actions, children }) => 
               <td className="text-sm px-1 py-1.5">{record.address}</td>
               <td className="text-sm px-1 py-1.5">{maskFormatPhoneNumber(record.phoneNumber)}</td>
               <td className="text-sm px-1 py-1.5">{record.email}</td>
-              <td className="text-sm px-1 py-1.5">{!record.managerData?.name && <div className='bg-gray-500 w-auto text-white p-1 rounded-md pl-2'>Sin representante asignado</div>}{record.managerData?.name} {record.managerData?.phoneNumber.length >= 10 ? ' ' + maskFormatPhoneNumber(record.managerData?.phoneNumber) : ''}</td>
-              <td className="text-sm px-1 py-1.5">{formatToLocalCurrency(record.creditLimit ?? 0, 'es-CO')}</td>
+              <td className="text-sm px-1 py-1.5">{!record.managerData?.name && <div className='bg-gray-500 w-auto text-white p-1 rounded-md pl-2'>Sin usuario asignado</div>}{record.managerData?.name} {record.managerData?.phoneNumber.length >= 10 ? ' ' + maskFormatPhoneNumber(record.managerData?.phoneNumber) : ''}</td>
+              <td className="text-sm px-1 py-1.5">{0}</td>
               {actions.map((action) => (
                 <td className="text-center px-1 py-1.5 text-sm" key={action.name}>
-                  <button style={{ margin: '0px auto' }} className={action.name === 'Status' && record.name ? 'action-red inline-block px-1 py-1.5 rounded-md hover:text-red-400'
+                  <button style={{ margin: '0px auto', color: 'white' }} className={action.name === 'Status' && record.name ? 'action-red inline-block px-1 py-1.5 rounded-md hover:text-red-400'
                     : action.name === 'Status' && !record.name ? 'action-red inline-block px-1 py-1.5 bg-green-700 text-white rounded-md hover:bg-green-500'
                       : 'action-blue inline-block px-1 py-1.5 text-red-600 hover:text-red-500 rounded-md'}
                     onClick={() => action.handler(record)}>
-                    {action.name === 'Edit' && <PencilIcon name="success" className="h-5 w-5 text-blue-500 hover:text-blue-700" />}
-                    {action.name === 'Status' && record.isActive && <StopIcon name="successInactive" className="h-5 w-5 text-red-600 hover:text-red-700" />}
-                    {action.name === 'Status' && !record.isActive && <StarIcon name="successActive" className="h-5 w-5 text-green-600 hover:text-green-700" />}
+                    {action.name === 'Edit' && <PencilIcon name="success" className="h-5 w-5 text-blue-50 hover:text-blue-700" />}
+                    {action.name === 'Status' && record.isActive && <StopIcon name="successInactive" className="h-5 w-5 text-red-60 hover:text-red-700" />}
+                    {action.name === 'Status' && !record.isActive && <StarIcon name="successActive" className="h-5 w-5 text-green-60 hover:text-green-700" />}
                   </button>
                 </td>
               ))}

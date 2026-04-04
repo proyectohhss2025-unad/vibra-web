@@ -164,13 +164,13 @@ const ParticipantDataPage: React.FC = () => {
             { name: 'Edit', handler: handleEdit, color: '#d1e7f2' },
             { name: 'Status', handler: handleOpenModal, color: 'white' }
           ]}>
-            <th >{getSafeKeyFromStorage('Name')}</th>
-            <th >NIT</th>
-            <th >{getSafeKeyFromStorage('Address')}</th>
-            <th >{getSafeKeyFromStorage('Phone number')}</th>
-            <th >{getSafeKeyFromStorage('Email')}</th>
-            <th >{getSafeKeyFromStorage('Manager')}</th>
-            <th >{getSafeKeyFromStorage('Credit Limit')}</th>
+            <th >Nombre</th>
+            <th >Documento</th>
+            <th >Dirección</th>
+            <th >Telefono</th>
+            <th >Email</th>
+            <th >Usuario</th>
+            <th >Paticipaciones</th>
           </Table>
           <Pagination
             currentPage={currentPage}
