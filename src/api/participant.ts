@@ -1,143 +1,249 @@
+/**
+ * API para gestionar participantes (participants)
+ * Alineado con vibra-api (NestJS) y la colección participants
+ */
+
 import { config } from '@/config/config';
-import { User } from '@/models/user.entity';
-import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import axios from 'axios';
-import logger from '../config/logger-dev';
 
 const environment = process.env.NODE_ENV || 'development';
-
 const configAPI = {
     baseURL: config[environment].apiDashboard,
 };
-const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
 
-export const createParticipant = async (participantData: any, managerData: any) => {
-    try {
-        const { participantID, participantName, participantNit, participantAddress, participantPhoneNumber, participantEmail, participantCreditLimit } = participantData;
-        const response = await axios.post(`${configAPI.baseURL}/api/participant`, {
-            _id: participantID ?? null,
-            name: participantName,
-            nit: participantNit,
-            address: participantAddress,
-            phoneNumber: participantPhoneNumber,
-            email: participantEmail,
-            managerData,
-            updatedBy: user_.name,
-            creditLimit: participantCreditLimit
-        });
+// ─── Tipos ────────────────────────────────────────────────────────────
 
-        return response.data.participant;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
+export interface ParticipantResponse {
+    _id: string;
+    /** Nuevo: userId del User asociado */
+    userId?: string;
+    /** Nuevo: nickname del participante */
+    nickname?: string;
+    /** Legacy: nombre comercial (ahora opcional) */
+    name?: string;
+    /** Legacy: NIT (ahora opcional) */
+    nit?: string;
+    /** Nuevo: puntos acumulados */
+    points?: number;
+    /** Nuevo: nivel (bronce/plata/oro/platino/diamante) */
+    level?: string;
+    /** Nuevo: racha actual de días */
+    currentStreak?: number;
+    /** Nuevo: récord de racha */
+    maxStreak?: number;
+    /** Nuevo: total de actividades completadas */
+    totalActivitiesCompleted?: number;
+    /** Nuevo: última fecha de actividad */
+    lastActivityDate?: string;
+    /** Nuevo: curso actual */
+    currentCourse?: string;
+    /** Legacy */
+    address?: string;
+    phoneNumber?: string;
+    email?: string;
+    avatar?: string;
+    isActive?: boolean;
+    /** Legacy comercial */
+    creditLimit?: number;
+    managerData?: {
+        name: string;
+        document: string;
+        documentType: string;
+        email: string;
+        phoneNumber: string;
+    };
+    createdAt?: string;
+    createdBy?: string;
 }
 
-export const getParticipantById = async (id: string) => {
-    try {
-        const response = await axios.post(`${configAPI.baseURL}/api/participant/id`, {
-            id,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        return response.data.participant;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
+export interface CreateParticipantPayload {
+    userId: string;
+    nickname: string;
+    avatar?: string;
+    currentCourse?: string;
+    preferences?: { language: string; notifications: boolean };
 }
 
-export const getParticipantByName = async (name: string) => {
-    try {
-        const response = await axios.post(`${configAPI.baseURL}/api/name`, {
-            name,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        return response.data.participant;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
+export interface UpdateParticipantPayload {
+    _id: string;
+    nickname?: string;
+    avatar?: string;
+    points?: number;
+    currentCourse?: string;
+    isActive?: boolean;
+    preferences?: { language: string; notifications: boolean };
 }
 
-export const searchParticipantsByQuery = async (query: string) => {
+// ─── Funciones API ────────────────────────────────────────────────────
+
+/**
+ * Obtiene todos los participantes con paginación
+ * GET /api/participants?page=&rows=
+ */
+export const getAll = async (page: number, rows: number): Promise<{ participants: ParticipantResponse[]; count: number }> => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/participant/search?searchTerm=${query}`);
-        if (response.data?.participants?.length > 0) {
-            return response.data?.participants;
-        } else {
-            return {
-                participants: [{
-                    _id: '',
-                    name: undefined,
-                    nit: query,
-                    address: '',
-                    phoneNumber: '',
-                    email: '',
-                    createdAt: new Date(Date.now()),
-                    createdBy: '',
-                    creditLimit: 0
-                }]
-            };
+        const response = await fetch(`${configAPI.baseURL}/api/participants?page=${page}&rows=${rows}`);
+        if (!response.ok) return { participants: [], count: 0 };
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener participantes:', error);
+        return { participants: [], count: 0 };
+    }
+};
+
+/**
+ * Obtiene un participante por su ID
+ * GET /api/participants/:id
+ */
+export const getById = async (id: string): Promise<ParticipantResponse | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants/${id}`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener participante:', error);
+        return null;
+    }
+};
+
+/**
+ * Obtiene un participante por userId (User)
+ * GET /api/participants/by-user/:userId
+ */
+export const getByUserId = async (userId: string): Promise<ParticipantResponse | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants/by-user/${userId}`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener participante por userId:', error);
+        return null;
+    }
+};
+
+/**
+ * Crea un nuevo participante
+ * POST /api/participants
+ */
+export const create = async (data: CreateParticipantPayload): Promise<ParticipantResponse | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Error al crear (${response.status}): ${text.slice(0, 300)}`);
         }
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
-        return null;
+        console.error('Error en create participante:', error);
+        throw error;
     }
-}
+};
 
-export const getAllParticipants = async (currentPage: number, pageSize: number) => {
+/**
+ * Actualiza un participante existente
+ * POST /api/participants/update
+ */
+export const update = async (data: UpdateParticipantPayload): Promise<ParticipantResponse | null> => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/participants?page=${currentPage}&rows=${pageSize}`);
-        return response.data;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
-}
-
-export const getCountAllParticipants = async () => {
-    try {
-        const response = await axios.get(`${configAPI.baseURL}/api/participants/count-all-participants`);
-        return response.data;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
-}
-
-export const setParticipantActive = async (_id: string, active: boolean, createdBy: string) => {
-    try {
-        const response = await axios.post(`${configAPI.baseURL}/api/participant/setActive`, {
-            _id,
-            active,
-            editedBy: createdBy
+        const response = await fetch(`${configAPI.baseURL}/api/participants/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
         });
-
-        return response.data.customer;
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Error al actualizar (${response.status}): ${text.slice(0, 300)}`);
+        }
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error en update participante:', error);
+        throw error;
+    }
+};
+
+/**
+ * Elimina (soft delete) un participante
+ * POST /api/participants/delete
+ */
+export const remove = async (id: string): Promise<ParticipantResponse | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ _id: id }),
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error al eliminar participante:', error);
         return null;
     }
-}
+};
 
+/**
+ * Obtiene el conteo total de participantes
+ * GET /api/participants/count-all-participants
+ */
+export const getCountAll = async (): Promise<{ count: number } | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants/count-all-participants`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error al contar participantes:', error);
+        return null;
+    }
+};
+
+/**
+ * Busca participantes por texto
+ * GET /api/participants/search?searchTerm=
+ */
+export const search = async (query: string): Promise<ParticipantResponse[]> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants/search?searchTerm=${encodeURIComponent(query)}`);
+        if (!response.ok) return [];
+        return await response.json();
+    } catch (error) {
+        console.error('Error al buscar participantes:', error);
+        return [];
+    }
+};
+
+// ─── Alias de compatibilidad ─────────────────────────────────────────
+
+/** @deprecated Usar getAll() */
+export const getAllParticipants = async (page: number, rows: number) => getAll(page, rows);
+
+/** @deprecated Usar getCountAll() */
+export const getCountAllParticipants = async () => getCountAll();
+
+/** @deprecated Usar search() */
+export const searchParticipantsByQuery = async (query: string): Promise<any[]> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/participants/search?searchTerm=${encodeURIComponent(query)}`);
+        if (!response.ok) return [];
+        return await response.json();
+    } catch (error) {
+        console.error('Error al buscar participantes:', error);
+        return [];
+    }
+};
+
+/** @deprecated Usar getTopParticipants del chart directamente */
 export const getTopParticipants = async (limit: number, startDate?: string, endDate?: string) => {
     try {
-        const params: any = { limit };
-        if (startDate) params.startDate = startDate;
-        if (endDate) params.endDate = endDate;
-
-        const response = await axios.get(`${configAPI.baseURL}/api/participant`, { params });
-        return response.data;
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
+        const response = await fetch(`${configAPI.baseURL}/api/participants/filter?${params}`);
+        if (!response.ok) return { participants: [], count: 0 };
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
-        return null;
+        console.error('Error al obtener top participantes:', error);
+        return { participants: [], count: 0 };
     }
-}
+};

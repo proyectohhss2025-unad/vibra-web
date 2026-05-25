@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Functional services for dashboard",
+  title: "Vibra — Educación emocional interactiva",
+  description: "Vibra es un proyecto educativo que utiliza la tecnología para ayudar a estudiantes a explorar, comprender y gestionar sus emociones a través de actividades interactivas.",
 };
 
 export default function RootLayout({

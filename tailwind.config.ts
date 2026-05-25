@@ -23,6 +23,13 @@ const config: Config = {
 				22: '10rem',
 			},
 			colors: {
+				'vibra-blue': '#007bff',
+				'vibra-blue-light': '#0099ff',
+				'vibra-coral': '#e85d75',
+				'vibra-yellow': '#f0c75e',
+				'vibra-mint': '#4ecdc4',
+				'vibra-heading': '#1a1a2e',
+				'vibra-body': '#4a4a6a',
 				'custom-white': '#ffffff',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',

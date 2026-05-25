@@ -1,6 +1,6 @@
 import AuthorInfo from '@/components/author-info';
 import ActiveUsers from '@/components/user/active-user';
-import { AuthContext } from '@/services/auth';
+import { AuthContext, ResolvedPermissions } from '@/services/auth';
 import { useDevice } from '@/services/contexts/device-context';
 import { FULL_NAME } from '@/utils/constants';
 import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
@@ -15,10 +15,9 @@ import { Toaster } from '@/registry/new-york/ui/toaster';
 import { Card } from '@/registry/new-york/ui/card';
 
 const Sidebar = () => {
-    const { token, otp, handleLogout, permissions/*, translates */ } = useContext(AuthContext);
+    const { token, otp, handleLogout, resolvedPermissions/*, translates */ } = useContext(AuthContext);
     const { isMobile, isTablet } = useDevice();
 
-    const [permissions_, setPermissions_] = useState<any>();
     const [dataMainMenu, setDataMainMenu] = useState<any[]>([]);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -48,35 +47,41 @@ const Sidebar = () => {
     }, []);
 
     useEffect(() => {
-        /* items.map((item: any) => {
-            const permissionExist = permissions?.find((option) => option.serial === item.permissionID);
-            if (permissionExist) {
-                console.log('permissionExist:', permissionExist);
-                return
-            }
-        });*/
-        setDataMainMenu(items);
-    }, [items]);
+        // Si no hay permisos resueltos aún, mostrar todos los items
+        if (!resolvedPermissions) {
+            setDataMainMenu(items);
+            return;
+        }
 
-    useEffect(() => {
-        setPermissions_(permissions ?? []);
-    }, [permissions]);
+        // SuperAdmin ve todo
+        if (resolvedPermissions.isSuperAdmin) {
+            setDataMainMenu(items);
+            return;
+        }
+
+        // Filtrar items del menú según los seriales de permisos del usuario
+        const filteredItems = items.filter(item => {
+            // Si el item no requiere permiso, mostrarlo
+            if (!item.permissionID) return true;
+
+            // Si tiene hijos, verificar que al menos uno tenga acceso
+            if (item.children && item.children.length > 0) {
+                const hasChildWithAccess = item.children.some(
+                    (child: any) => !child.permissionID || resolvedPermissions.serials.includes(child.permissionID)
+                );
+                if (!hasChildWithAccess) return false;
+            }
+
+            // Verificar permiso por serial
+            return resolvedPermissions.serials.includes(item.permissionID);
+        });
+
+        setDataMainMenu(filteredItems);
+    }, [resolvedPermissions]);
 
     useEffect(() => {
         setIsAuthenticated(!!token && !!otp);
     }, [token, otp]);
-
-    /*useEffect(() => {
-        const itemsExist_ = items?.filter(item => {
-            if (item?.permissionID) {
-                const permissionExist = permissions_?.userPermissions?.find((option: any) => option?.permission?.serial === item?.permissionID);
-                if (permissionExist) {
-                    return item;
-                }
-            }
-        });
-        setDataMainMenu(itemsExist_);
-    }, [permissions_?.length]);*/
 
     useEffect(() => {
         const a = getSafeKeyFromStorage('expandedSidebar');
@@ -156,7 +161,12 @@ const Sidebar = () => {
                         </div>}
                     </div>
                     {isAuthenticated && <AuthorInfo isCollapsed={isCollapsed} />}
-                    {/*!isCollapsed && permissions_?.length > 0 && <div className={`text-sm container mt-1 items-center justify-between ${isCollapsed ? 'px-0' : 'px-1 mx-3'}`} >Permissions assigned: {permissions_?.length}</div>*/}
+                    {!isCollapsed && resolvedPermissions && (
+                        <div className="text-xs text-gray-400 mt-1 px-3">
+                            {resolvedPermissions.permissions.length} permiso(s) asignado(s)
+                            {resolvedPermissions.isSuperAdmin && ' · SuperAdmin'}
+                        </div>
+                    )}
                     <div className={`container mx-auto mt-0 items-center justify-between ${isCollapsed ? 'px-0' : 'px-1'}`}>
                         {<MenuMainList items={dataMainMenu} isAuthenticated={isAuthenticated} isCollapsed={isCollapsed} setTab={() => { }} />}
                     </div>

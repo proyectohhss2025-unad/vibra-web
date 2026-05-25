@@ -86,6 +86,23 @@ export const getCompanyByName = async (name: string) => {
     }
 }
 
+/**
+ * Busca compañías por término (nombre, nit, email, etc.)
+ * Endpoint: GET /api/company/search?searchTerm=&page=1&rows=10
+ */
+export const searchCompanies = async (searchTerm: string) => {
+    try {
+        const response = await axios.get(`${configAPI.baseURL}/api/company/search`, {
+            params: { searchTerm, page: 1, rows: 10 },
+        });
+        // El backend retorna { data: [...], total: N }
+        return response.data?.data || response.data || [];
+    } catch (error) {
+        logger.error('Error buscando compañías:', error);
+        return [];
+    }
+}
+
 export const searchByQuery = async (query: string) => {
     try {
         const response = await axios.get(`${configAPI.baseURL}/api/company/search?searchTerm=${query}`);

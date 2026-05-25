@@ -13,6 +13,7 @@ import GeneralDashboardComponent from "../general-dashboard"
 import NotificationTray from "../notification-tray"
 //import DashboardReports from "../reports/dashboard-reports"
 import CurrentDateTime from "../utils/current-datetime"
+import CourseListPage from "../course/course-list-page"
 
 type MainProps = {
   className: string;
@@ -120,27 +121,25 @@ export default function MainNav({ className }: MainProps) {
           <NavigationMenuItem>
             <NavigationMenuTrigger>Acciones</NavigationMenuTrigger>
             <NavigationMenuContent>
-              {/*<ul className="grid gap-3 p-4 w-[340px] md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-                {componentsTasksModule.map((component: any) => (
-                  component.isActive && <ListItem
-                    key={`T${component.id}`}
-                    title={component.label}
-                    href={component.href}
-                    onClick={() => {
-                      openTab(
-                        `/${component.id}`,
-                        `${component.title}`,
-                        <component.component />
-                      );
-                    }}
-                  >
-                    <div className="flex items-center">
-                      <component.icon className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
-                      {component.description}
-                    </div>
-                  </ListItem>
-              ))}
-              </ul>*/}
+              <ul className="grid gap-3 p-4 w-[340px] md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                <ListItem
+                  key="Cursos"
+                  title="Cursos"
+                  href="#"
+                  onClick={() => {
+                    openTab(
+                      `/Cursos`,
+                      `Cursos`,
+                      <CourseListPage />
+                    );
+                  }}
+                >
+                  <div className="flex items-center">
+                    <DatabaseBackupIcon className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
+                    Gestión de cursos
+                  </div>
+                </ListItem>
+              </ul>
             </NavigationMenuContent>
           </NavigationMenuItem>
           {/*<NavigationMenuItem>

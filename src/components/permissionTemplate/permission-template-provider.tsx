@@ -24,7 +24,6 @@ export const PermissionTemplateProvider: React.FC<{
     const [permissionTemplateData, setPermissionTemplateData] = useState<PermissionTemplate>(permissionTemplateData_);
 
     useEffect(() => {
-        console.log('permissionTemplateData.permissions in provider: ', permissionTemplateData_.permissions);
         setPermissionTemplateData(permissionTemplateData_);
     }, [permissionTemplateData_]);
 

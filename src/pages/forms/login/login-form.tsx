@@ -8,6 +8,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { User } from '@/models/user.entity';
 import ErrorPage from '@/pages/error/error-500';
 import ForgotPassword from '@/services/forgot-password';
+import axios from 'axios';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { CalendarIcon, LockOpenIcon, SupportIcon } from '@heroicons/react/solid';
 import { TourProvider, useTour } from '@reactour/tour';
@@ -133,6 +134,21 @@ const LoginForm: React.FC = () => {
 
                 localStorage.setItem('token', token);
                 localStorage.setItem('otp', otp);
+                // Configurar axios para enviar token en todas las peticiones
+                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                // Parchear fetch global para incluir token
+                if (typeof window !== 'undefined') {
+                  const origFetch = window.fetch.bind(window);
+                  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+                    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : '';
+                    if (!url.includes('/api/auth/') && url.includes('/api/')) {
+                      const headers = new Headers(init?.headers);
+                      headers.set('Authorization', `Bearer ${token}`);
+                      return origFetch(input, { ...init, headers });
+                    }
+                    return origFetch(input, init);
+                  };
+                }
 
                 const objectToken: User = await verifyJwtToken(token);
                 localStorage.setItem('user', JSON.stringify(objectToken));

@@ -56,7 +56,6 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({
 
 
     const closeTabWithRefresh = (id: string, withRefresh: boolean) => {
-        console.log('withRefresh:', !withRefresh);
         if (tabs.length == 1) {
             return;
         }
@@ -65,7 +64,10 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({
             const remainingTabs = tabs.filter((tab) => tab.id !== id);
             setActiveTab(remainingTabs[remainingTabs.length - 1 || 0]?.id || null);
         }
-        setRefreshData(!withRefresh);
+        // Alternar refreshData para que el efecto en las listas detecte el cambio
+        if (withRefresh) {
+            setRefreshData((prev) => !prev);
+        }
         window.scrollTo(0, 0);
     };
 

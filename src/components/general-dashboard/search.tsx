@@ -32,6 +32,15 @@ const componentsTransactionsModule: { id: string, title: string; label: string; 
     component: <></>,
     icon: "",
   },
+  {
+    id: "Cursos",
+    title: "Cursos",
+    label: "Gestión de cursos",
+    href: "#",
+    description: "Clic para gestionar los cursos",
+    component: <></>,
+    icon: "",
+  },
 ]
 
 const SearchInAllPage: React.FC<SearchProps> = ({ isOpen, onClose, setData, disabled, val, children }) => {

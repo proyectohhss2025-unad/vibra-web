@@ -27,18 +27,20 @@ import { FORMAT_DATE_SHORT, LOCALE } from "@/utils/constants"
 import { formatDate, getFirstAndLastDayOfYear, getYearCurrent } from "@/utils/dates"
 import { formatToLocalCurrency } from "@/utils/money"
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from "@/utils/safe-token-storage"
+import { Badge } from "@/registry/new-york/ui/badge"
 import { CheckCheckIcon, CircleDollarSignIcon, HandCoins, NotebookTabsIcon, SquareArrowOutUpRightIcon, Wallet2Icon } from "lucide-react"
 import { useRouter } from "next/router"
 import { useContext, useEffect, useState } from "react"
-import TopParticipantsChart from "./participant/chart/top-participants-chart"
+import AnalyticsDashboard from "./analytics/analytics-dashboard"
 import CalendarDateRangePicker from "./general-dashboard/date-range-picker"
 import DropdownMenuButton from "./layouts/menu/dropdown-menu-button"
 import ActivityDataPage from "./activity/data-page"
+import ActivityComponent from "./activity/activity"
 import { getCountAllParticipants } from "@/api/participant"
 import { getCountAllUsers } from "@/api/user"
 import { getCountAllPretest } from "@/api/preTest"
 import UserDataPage from "./user/data-page"
-import { getCountAllActivities } from "@/api/activity"
+import { getCountAllActivities, getCountByType, getTodayActivity, getTodayCompletionsCount } from "@/api/activity"
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -64,8 +66,8 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     const [totalActivities, setTotalActivities] = useState<number>(0);
     const [percentTotalUsers, setPercentTotalUsers] = useState<number>(0);
     const [totalUsers, setTotalUsers] = useState<number>();
-    const [percentTotalEvents, setPercentTotalEvents] = useState<number>(0);
-    const [totalEvents, setTotalEvents] = useState<number>();
+    const [totalCompletionsToday, setTotalCompletionsToday] = useState<number>(0);
+    const [totalActiveRetos, setTotalActiveRetos] = useState<number>(0);
     const [percentTotalInPretest, setPercentTotalInPretest] = useState<number>(0);
     const [totalInPretest, setTotalInPretest] = useState<number>(0);
     //const [totalActivities, setTotalActivities] = useState<number>(0);
@@ -91,6 +93,7 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
         { _id: '16', name: '2029', value: '16', label: '2029', icon: 'CheckIcon', description: '' },
         { _id: '17', name: '2030', value: '17', label: '2030', icon: 'CheckIcon', description: '' }
     ]);
+    const [todayActivityStatus, setTodayActivityStatus] = useState<'loading' | 'active' | 'no_activity'>('loading');
     const [totalNotifications, setTotalNotifications] = useState<string | null>(null);
     const [labelData, setLabelData] = useState<any>();
     const router = useRouter();
@@ -103,8 +106,24 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     useEffect(() => {
         getCountAllActivities()
             .then(data => {
-                setTotalActivities(data);
+                setTotalActivities(data?.count ?? 0);
             });
+        getTodayCompletionsCount()
+            .then(data => {
+                setTotalCompletionsToday(data?.count ?? 0);
+            });
+        getCountByType('reto')
+            .then(data => {
+                setTotalActiveRetos(data?.count ?? 0);
+            });
+    }, []);
+
+    useEffect(() => {
+        getTodayActivity()
+            .then(data => {
+                setTodayActivityStatus(data?.schedule?.status === 'active' ? 'active' : 'no_activity');
+            })
+            .catch(() => setTodayActivityStatus('no_activity'));
     }, []);
 
     useEffect(() => {
@@ -117,7 +136,7 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     useEffect(() => {
         getCountAllParticipants()
             .then(data => {
-                setTotalParticipants(data);
+                if (data) setTotalParticipants(data.count);
             });
     }, []);
     
@@ -140,60 +159,18 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     }, [dateInitFilter, dateEndFilter]);
 
     useEffect((): any => {
-        //const dateFilterFrom: any = getSafeKeyFromStorage('dateFilterFrom');
-        //const dateFilterTo: any = getSafeKeyFromStorage('dateFilterTo');
-
+        // Validar autenticación, ignorando cambios de refreshData (que es para tabs hijas)
         if (!user_?._id || !token) {
             router.push('/layout');
             return;
         }
-
-        if (dateInitFilter && dateEndFilter && yearFilter) {
-
-            console.log('YearFilter:', yearFilter);
-            console.log('dateInitFilter:', formatDate(dateInitFilter, FORMAT_DATE_SHORT));
-            console.log('dateEndFilter:', formatDate(dateEndFilter, FORMAT_DATE_SHORT));
-
-            /* 
-            getAllActivitiesByFilter(contractFilter, epsIpsFilter, formatDate(dateInitFilter, FORMAT_DATE_SHORT), formatDate(dateEndFilter, FORMAT_DATE_SHORT), '', 'PDF', participantFilter?._id, '')
-                .then((data: any) => {
-                    setTotalActivities(data?.length);
-                });
-
-            getParticipantDataByMonth(yearFilter, formatDate(dateInitFilter, FORMAT_DATE_SHORT), formatDate(dateEndFilter, FORMAT_DATE_SHORT), isRange, participantFilter?._id)
-                .then((data: any) => {
-                    let total = 0;
-                    let totalActivities_ = 0;
-                    data?.monthlyActivities?.forEach((element: any) => {
-                        total += element?.monthlyTotal;
-                        totalActivities_ += element?.activities?.length;
-                        setPercentTotalActivities(element?.percentOfYear);
-                    });
-                    setTotalActivities(totalActivities_)
-                    setTotalActivities(total);
-                });
-            */
-        }
-
-    }, [selectedYear, isRange, selectedDate, participantFilter, dateInitFilter, dateEndFilter, refreshData]);
+    }, [user_?._id, token]);
 
     useEffect((): any => {
         if (!user_?._id || !token) {
             router.push('/layout');
         }
-        /*if (dateInitFilter && dateEndFilter && yearFilter) {
-            getUsersDataByMonth('Open', yearFilter, formatDate(dateInitFilter, FORMAT_DATE_SHORT), formatDate(dateEndFilter, FORMAT_DATE_SHORT), isRange, participantFilter?._id)
-                .then((data: any) => {
-                    let total = 0;
-                    data?.accountsReceivable?.forEach((element: any) => {
-                        total += element?.monthlyTotal;
-                        setPercentTotalUsers(element?.percentOfYear);
-                    });
-                    setTotalReceivable(total + totalInPretest);
-                });
-        }*/
-
-    }, [selectedYear, isRange, selectedDate, participantFilter, dateInitFilter, dateEndFilter, refreshData, totalInPretest]);
+    }, [user_?._id, token]);
 
     const renderOption = ({ label }) => label;
     const dataLabel_ = () => {
@@ -243,90 +220,96 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
         <>
             {isMobile && <div className="grid grid-cols">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                    {todayActivityStatus === 'no_activity' && (
+                        <div className="col-span-full mb-2">
+                            <Badge
+                                variant="destructive"
+                                className="w-full cursor-pointer py-2 text-xs gap-1.5"
+                                onClick={() => openTab(
+                                    `/Actividad`,
+                                    "Nueva actividad",
+                                    <ActivityComponent />
+                                )}
+                            >
+                                <span>⚠ Sin actividad para hoy — Crear actividad →</span>
+                            </Badge>
+                        </div>
+                    )}
+                    {todayActivityStatus === 'active' && (
+                        <div className="col-span-full mb-2">
+                            <Badge variant="secondary" className="w-full text-xs gap-1">
+                                ✅ Actividad de hoy asignada
+                            </Badge>
+                        </div>
+                    )}
                     <Card className="bg-white rounded-md">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
-                                Total de acciones:
+                                Total actividades
                             </CardTitle>
-                            <HoverCard>
-                                <HoverCardTrigger asChild>
-                                    <Wallet2Icon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-80">
-                                    <div className="flex justify-between space-x-4" >
-                                        <div className="space-y-1">
-                                            <h4 className="text-sm font-semibold">Datos en el filtro</h4>
-                                            <p className="text-sm">
-                                                {labelData}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </HoverCardContent>
-                            </HoverCard>
+                            <Wallet2Icon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold flex items-center">
-                                {!!(totalParticipants) && <p>{totalParticipants}</p>}
-                                {!totalParticipants && <p>Cargando...</p>}
+                            <div className="text-2xl font-bold">
+                                {totalActivities ?? 0}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Todas los datos en el rango del tiempo
+                                Actividades creadas
                             </p>
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
-                                Total eventos
+                                Total participantes
                             </CardTitle>
-                            <CircleDollarSignIcon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
+                            <CheckCheckIcon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold flex items-center">
-                                {!!(totalParticipants) && <p>10</p>}
-                                {!totalParticipants && <p>Cargando...</p>}
+                            <div className="text-2xl font-bold">
+                                {totalParticipants ?? 0}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {Number(percentTotalParticipants).toFixed(2)}% para el último mes
+                                Participantes registrados
                             </p>
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
-                                Total de usuarios...
+                                Total usuarios
                             </CardTitle>
                             <HandCoins className="h-7 w-7 text-gray-500 hover:text-gray-700" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold flex items-center">
-                                {totalUsers && <p>{formatToLocalCurrency(totalUsers, LOCALE)}</p>}
+                            <div className="text-2xl font-bold">
+                                {totalUsers ?? 0}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {Number(percentTotalUsers).toFixed(2)}%- para el último mes
+                                Usuarios del sistema
                             </p>
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
-                                Total participaciones
+                                Completaciones hoy
                             </CardTitle>
                             <NotebookTabsIcon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold flex items-center">
-                                {totalEvents && <p>{formatToLocalCurrency(totalEvents, LOCALE)}</p>}
+                            <div className="text-2xl font-bold">
+                                {totalCompletionsToday}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {Number(percentTotalParticipants).toFixed(2)}%+ para el último mes
+                                Actividades completadas hoy
                             </p>
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">
-                                Total de expresiones pendientes
+                                Retos activos
                             </CardTitle>
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -342,16 +325,15 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             </svg>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold flex items-center">
-                                {!!(totalInPretest) && <p>{totalInPretest}</p>}
+                            <div className="text-2xl font-bold">
+                                {totalActiveRetos}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                {Number(percentTotalInPretest).toFixed(2)}% para el último mes
+                                Retos disponibles
                             </p>
                         </CardContent>
                     </Card>
                 </div>
-                {/*<ParticipantDashboardMini />*/}
             </div>}
             {!isMobile && <div className="hidden flex-col md:flex w-full">
                 <div className="flex-1 space-y-4 pt-1 mx-2 mb-4">
@@ -417,9 +399,6 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             <TabsTrigger value="analytics" className="hover:text-gray-700 data-[state=active]:bg-gray-100" >
                                 Gráficas, Analítica
                             </TabsTrigger>
-                            <TabsTrigger value="reports" className="hover:text-gray-700 data-[state=active]:bg-gray-100 disabled:bg-gray-300" >
-                                Institución
-                            </TabsTrigger>
                             {/*<DataGeneral />*/}
                         </TabsList>
                         <TabsContent value="overview" className="space-y-4">
@@ -427,59 +406,67 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                 <Card className="bg-white rounded-md">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-md font-normal">
-                                            Total de actividades:
+                                            Total actividades
                                         </CardTitle>
-                                        <HoverCard>
-                                            <HoverCardTrigger asChild>
-                                                <Wallet2Icon onClick={() => {
-                                                    openTab(
-                                                        `/Actividades`,
-                                                        "Actividades",
-                                                        <ActivityDataPage />
-                                                    );
-                                                }} className="h-7 w-7 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </HoverCardTrigger>
-                                            <HoverCardContent className="w-80">
-                                                <div className="flex justify-between space-x-4" >
-                                                    <div className="space-y-1">
-                                                        <h4 className="text-sm font-semibold">Datos en el filtro</h4>
-                                                        <p className="text-sm">
-                                                            {labelData}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </HoverCardContent>
-                                        </HoverCard>
+                                        <Wallet2Icon onClick={() => {
+                                            openTab(
+                                                `/Actividades`,
+                                                "Actividades",
+                                                <ActivityDataPage />
+                                            );
+                                        }} className="h-7 w-7 text-gray-500 hover:text-gray-700 cursor-pointer" />
                                     </CardHeader>
+                                    {todayActivityStatus === 'no_activity' && (
+                                        <div className="px-6 pb-1">
+                                            <Badge
+                                                variant="destructive"
+                                                className="w-full cursor-pointer py-1.5 text-xs gap-1.5"
+                                                onClick={() => openTab(
+                                                    `/Actividad`,
+                                                    "Nueva actividad",
+                                                    <ActivityComponent />
+                                                )}
+                                            >
+                                                <span>⚠ Sin actividad para hoy — Crear actividad →</span>
+                                            </Badge>
+                                        </div>
+                                    )}
+                                    {todayActivityStatus === 'active' && (
+                                        <div className="px-6 pb-1">
+                                            <Badge variant="secondary" className="w-full text-xs gap-1">
+                                                ✅ Actividad de hoy asignada
+                                            </Badge>
+                                        </div>
+                                    )}
                                     <CardContent>
-                                        <div className="text-2xl font-bold flex items-center">
-                                            {totalActivities && <p>{totalActivities}</p>}
+                                        <div className="text-2xl font-bold">
+                                            {totalActivities ?? 0}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            Todas las actividades realizadas en el rango del filtro
+                                            Actividades creadas en el sistema
                                         </p>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-md font-normal">
-                                            Total de participantes
+                                            Total participantes
                                         </CardTitle>
                                         <CheckCheckIcon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="text-xl font-bold flex items-center">
+                                        <div className="text-xl font-bold">
                                             {totalParticipants ?? 0}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            {Number(percentTotalParticipants).toFixed(2)}%+ para el último mes
+                                            Participantes registrados
                                         </p>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-md font-normal">
-                                            Total de usuarios
+                                            Total usuarios
                                         </CardTitle>
                                         <HandCoins onClick={() => {
                                             openTab(
@@ -490,49 +477,34 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         }} className="h-7 w-7 text-gray-500 hover:text-gray-700 cursor-pointer" />
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="text-xl font-bold flex items-center">
+                                        <div className="text-xl font-bold">
                                             {totalUsers ?? 0}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            {Number(percentTotalUsers).toFixed(2)}% para el último mes
+                                            Usuarios del sistema
                                         </p>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-md font-normal">
-                                            Total de eventos
+                                            Completaciones hoy
                                         </CardTitle>
-                                        <TooltipProvider>
-                                            <Tooltip>
-                                                <TooltipTrigger>
-                                                    <NotebookTabsIcon onClick={() => {
-                                                        /*openTab(
-                                                            `/Eventos`,
-                                                            "Eventos",
-                                                            <EventDataPage />
-                                                        );*/
-                                                    }} className="h-7 w-7 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>Ir al panel de eventos.</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
+                                        <NotebookTabsIcon className="h-7 w-7 text-gray-500 hover:text-gray-700" />
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="text-xl font-bold flex items-center">
-                                            {totalEvents ?? 0}
+                                        <div className="text-xl font-bold">
+                                            {totalCompletionsToday}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            {Number(percentTotalEvents).toFixed(2)}% para el último mes
+                                            Actividades completadas hoy
                                         </p>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-md font-normal">
-                                            Total de Pretests
+                                            Retos activos
                                         </CardTitle>
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
@@ -548,11 +520,11 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         </svg>
                                     </CardHeader>
                                     <CardContent>
-                                        <div className="text-xl font-bold flex items-center">
-                                            {!!(totalInPretest) && <p>{totalInPretest}</p>}
+                                        <div className="text-xl font-bold">
+                                            {totalActiveRetos}
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            {Number(percentTotalInPretest).toFixed(2)}% para el último mes
+                                            Retos grupales disponibles
                                         </p>
                                     </CardContent>
                                 </Card>
@@ -593,369 +565,9 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             </div>
                         </TabsContent>
                         <TabsContent value="analytics" className="space-y-4 w-full">
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-                                <Card className="col-span-1 bg-white rounded-md">
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Información general de las participaciones</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /* openTab(
-                                                        `/InformacionGeneralCuentasCobro`,
-                                                        "Información general de cuentas de cobro",
-                                                        <AccountsReceivableBarChart setYearFilter={setSelectedYear} />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Participaciones por mes en el año {selectedYear}.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<AccountsReceivableBarChart setYearFilter={setSelectedYear} />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0 ml-4 mt-2'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1 border-t-2">
-                                                        {/*<ParticipantStatusChart withHeader={false} yearFilter={selectedYear} />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md">
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Información general de Recursos</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/InformacionGeneralPagos`,
-                                                        "Información general de pagos",
-                                                        <ParticipantChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Recursos por mes en el año {selectedYear}.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<ParticipantChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0 ml-4 mt-2'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1 border-t-2">
-                                                        {/*<ParticipantBarChartByQ />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md">
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Información general de Participantes</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/InformacionGeneralNotasCredito`,
-                                                        "Información general de notas credito",
-                                                        <CreditNoteBarChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Participantes por mes en el año {selectedYear}.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<CreditNoteBarChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0 ml-4'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<CreditNoteBarChartByQ />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                            <AnalyticsDashboard />
+                        </TabsContent>
 
-                                <Card className="col-span-1 bg-white rounded-md">
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Información general de Instituciones</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/InformacionGeneralNotasDebito`,
-                                                        "Información general de notas débito",
-                                                        <CreditNoteBarChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Instituciones por mes en el año {selectedYear}.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<DebitNoteBarChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0 ml-4'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<DebitNoteBarChartByQ />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </TabsContent>
-                        <TabsContent value="reports" className="space-y-4">
-                            <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Usuarios con mayor cantidad de participaciones </p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    openTab(
-                                                        `/Usuarios`,
-                                                        "Usuarios",
-                                                        <TopParticipantsChart />
-                                                    );
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este gráfico permite visualizar cuántas usuarios tienen más cantidad de participaciones, categorizadas por rango de tiempo (por ejemplo, menos de 30 días, entre 30 y 60 días, más de 60 días).                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center">
-                                                        <TopParticipantsChart />
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Proporción de participaciones pendientes vs. realizadas</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/Estados de participación`,
-                                                        "Estados de participación",
-                                                        <ParticipantStatusEndChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este gráfico permite monitorear el estado general de las participaciones, mostrando visualmente qué proporción están pendientes y cuáles han sido realizadas
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<ParticipantStatusEndChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Participaciones y eventos por mes</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/ParticipacionesPorMes`,
-                                                        "Participaciones por mes",
-                                                        <MonthlyFinanceChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este gráfico permite visualizar cómo evolucionan las participaciones (realizadas) y (no realizadas) mes a mes, ayudando a analizar tendencias y planificar.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<MonthlyFinanceChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Participaciones</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/ParticipacionesPendientesYVencidas`,
-                                                        "Participaciones pendientes y vencidas",
-                                                        <ParticipantStatusEndOpenChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este gráfico permite visualizar ...(por ejemplo, menos de 30 días, entre 30 y 60 días, más de 60 días).                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<ParticipantStatusEndOpenChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Análisis del flujo de efectivo</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/AnalisisFlujoEfectivo`,
-                                                        "Análisis flujo efectivo",
-                                                        <CashFlowChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este gráfico muestra cómo cambia el flujo de participaciones mes a mes para que puedas visualizar los períodos con superávit o déficit.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<CashFlowChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Flujo de Caja Predicho</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/FlujoCajaPredicho`,
-                                                        "Flujo caja predicho",
-                                                        <CashFlowPredictionChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este análisis proporciona una visualización proyectada del flujo de participaciones próximas a vencer.                                    </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1">
-                                                        {/*<CashFlowPredictionChart />*/}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-1 bg-white rounded-md" style={{ height: '600px' }}>
-                                    <CardHeader>
-                                        <CardTitle>
-                                            <div className="flex items-center justify-between">
-                                                <p>Distribución de pagos por métodos de pago</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/DistribucionParticipaciones`,
-                                                        "Distribución de participaciones",
-                                                        <ParticipantMethodsChart />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                                            </div>
-                                        </CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Este gráfico muestra cómo se dividen las participaciones según los métodos de pago.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        <div className="grid grid-cols-1">
-                                            <Card className="col-span-1 mt-0 border-0 shadow-none">
-                                                <CardContent className='p-0'>
-                                                    <div className="col-span-full grid grid-cols-1 items-center mb-1 h-full">
-                                                        {/* <ParticipantMethodsChart /> */}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </TabsContent>
                     </Tabs>
                 </div>
             </div>}

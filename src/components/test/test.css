@@ -1,0 +1,41 @@
+.test-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.test-container .form-section {
+    margin-bottom: 2rem;
+}
+
+.test-container .question-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background-color: #f9fafb;
+}
+
+.test-container .required-field::after {
+    content: '*';
+    color: #ef4444;
+    margin-left: 0.25rem;
+}
+
+/* Badge para el estado activo/inactivo */
+.badge-active {
+    background-color: #d1fae5;
+    color: #065f46;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}

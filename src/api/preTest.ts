@@ -144,3 +144,17 @@ export const updatePreTestStatus = async (id: string, status: string) => {
         throw error;
     }
 };
+
+/**
+ * Obtiene respuestas de un test específico con paginación
+ * GET /api/pretests/by-test/:testId?page=1&limit=10
+ */
+export const getByTestId = async (testId: string, page = 1, limit = 10): Promise<{ data: any[]; total: number }> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/pretests/by-test/${testId}?page=${page}&limit=${limit}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener respuestas por test:', error);
+        return { data: [], total: 0 };
+    }
+};

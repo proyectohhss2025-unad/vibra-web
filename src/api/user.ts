@@ -113,6 +113,21 @@ export const getForgotPassword = async (email: string) => {
     }
 }
 
+/**
+ * Busca usuarios con rol docente por nombre, email, documento o username
+ */
+export const searchDocentes = async (searchTerm: string) => {
+    try {
+        const response = await axios.get(`${configAPI.baseURL}/api/users/search-by-role/docentes`, {
+            params: { searchTerm, limit: 10 },
+        });
+        return response.data;
+    } catch (error) {
+        logger.error('Error buscando docentes:', error);
+        return [];
+    }
+}
+
 export const getCountAllUsers = async () => {
     try {
         const response = await axios.get(`${configAPI.baseURL}/api/users/count-all-users`);

@@ -51,6 +51,14 @@ const SearchParticipant: React.FC<SearchProps> = ({ isOpen, onClose, setParticip
                 setParticipant([
                     {
                         _id: '',
+                        userId: '',
+                        nickname: 'Not found',
+                        points: 0,
+                        level: 'bronce',
+                        currentStreak: 0,
+                        maxStreak: 0,
+                        totalActivitiesCompleted: 0,
+                        isActive: false,
                         name: 'Not found',
                         nit: query,
                         address: '',
@@ -74,6 +82,14 @@ const SearchParticipant: React.FC<SearchProps> = ({ isOpen, onClose, setParticip
             setParticipant([
                 {
                     _id: '',
+                    userId: '',
+                    nickname: 'Not found',
+                    points: 0,
+                    level: 'bronce',
+                    currentStreak: 0,
+                    maxStreak: 0,
+                    totalActivitiesCompleted: 0,
+                    isActive: false,
                     name: 'Not found',
                     nit: query,
                     address: '',

@@ -1,12 +1,14 @@
+import axios from 'axios';
 import { authLogout } from '@/api/auth-login';
 import { getMainCompany } from '@/api/company';
 import { getConfigById, hasAccessToConfig } from '@/api/config';
-import { getAllPermissionsByUser } from '@/api/permission';
+import { getAllPermissionsByUser, getMyPermissions } from '@/api/permission';
+import { getByUserId as getParticipantByUserId } from '@/api/participant';
 import InfoApp from '@/components/info-app';
 import Footer from '@/components/layouts/footer/footer';
 import Sidebar from '@/components/layouts/sidebar/sidebar';
 import { User } from '@/models/user.entity';
-import { AuthContext, AuthContextValue } from '@/services/auth';
+import { AuthContext, AuthContextValue, ParticipantContextData } from '@/services/auth';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { useRouter } from 'next/router';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -22,9 +24,30 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const [otp, setOtp] = useState<string | null>(otp_ ?? null);
   const [user, setUser] = useState<any | null>(user_);
   const [permissions, setPermissions] = useState<any>();
+  const [resolvedPermissions, setResolvedPermissions] = useState<any>(null);
   const [mainCompany, setMainCompany] = useState<any>();
+  const [participant, setParticipant] = useState<ParticipantContextData | null>(null);
   const [apiIsOnline, setApiIsOnline] = useState<boolean>(true);
   const router = useRouter();
+
+  // Inicializar header de autorización si hay token en localStorage
+  if (token_) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token_}`;
+  }
+
+  // Inicializar fetch patch si hay token en localStorage
+  if (token_ && typeof window !== 'undefined') {
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : '';
+      if (!url.includes('/api/auth/') && url.includes('/api/')) {
+        const headers = new Headers(init?.headers);
+        headers.set('Authorization', `Bearer ${token_}`);
+        return origFetch(input, { ...init, headers });
+      }
+      return origFetch(input, init);
+    };
+  }
 
   // #region COMPANY DATA 
 
@@ -52,6 +75,24 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     fetchData();
   }, []);
 
+  // #endregion
+
+  // #region RESOLVED PERMISSIONS (desde GET /api/auth/my-permissions)
+  useEffect(() => {
+    const fetchResolvedPermissions = async () => {
+      try {
+        if (token) {
+          const data = await getMyPermissions();
+          if (data) {
+            setResolvedPermissions(data);
+          }
+        }
+      } catch (error) {
+        logger.error('Error fetching resolved permissions:', error);
+      }
+    };
+    fetchResolvedPermissions();
+  }, [token]);
   //#endregion
 
   // #region CONFIG FF 
@@ -97,19 +138,79 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   }, [user_, permissions]);
   //#endregion
 
+  // #region PARTICIPANT DATA
+
+  // Cargar participante desde localStorage al montar
+  useEffect(() => {
+    const stored = getSafeKeyObjectFromStorage('participant');
+    if (stored) {
+      try {
+        setParticipant(JSON.parse(stored));
+      } catch { /* ignorar */ }
+    }
+  }, []);
+
+  // Cargar participante desde API cuando el usuario está disponible
+  useEffect(() => {
+    const fetchParticipant = async () => {
+      const userId = user_?._id || (user as any)?._id;
+      if (!userId) return;
+      try {
+        const data = await getParticipantByUserId(userId);
+        if (data) {
+          setParticipant(data as unknown as ParticipantContextData);
+          localStorage.setItem('participant', JSON.stringify(data));
+        }
+      } catch (error) {
+        logger.warn('No se pudo cargar el participante:', error);
+      }
+    };
+    if (user_?._id || (user as any)?._id) {
+      fetchParticipant();
+    }
+  }, [user_?._id, (user as any)?._id]);
+
+  //#endregion
+
+  const patchFetchWithToken = (token: string) => {
+    if (typeof window !== 'undefined') {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : '';
+        const isPublicRoute =
+          url.includes('/api/auth/login') ||
+          url.includes('/api/auth/register') ||
+          url.includes('/api/auth/health');
+        if (!isPublicRoute && url.includes('/api/')) {
+          const headers = new Headers(init?.headers);
+          headers.set('Authorization', `Bearer ${token}`);
+          return originalFetch(input, { ...init, headers });
+        }
+        return originalFetch(input, init);
+      };
+    }
+  };
+
   const handleLogin = (newToken: string, newOtp: string) => {
     setToken(newToken);
     localStorage.setItem('token', newToken);
-    setOtp(otp);
+    setOtp(newOtp);
     localStorage.setItem('otp', newOtp);
+    // Configurar axios para enviar token en todas las peticiones
+    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+    // Parchear fetch global para incluir token
+    patchFetchWithToken(newToken);
   };
 
   const handleLogout = async () => {
     const response: any = await authLogout(user_?.sub ?? '');
+    // Limpiar header de autorización
+    delete axios.defaults.headers.common['Authorization'];
     if (response?.logout) {
       localStorage.removeItem('token');
       localStorage.removeItem('otp');
       localStorage.removeItem('user');
+      localStorage.removeItem('participant');
       localStorage.removeItem('selectedItem');
       localStorage.removeItem('expandedItem');
 
@@ -117,13 +218,14 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       router.push('/');
       setToken(null);
       setOtp(null);
+      setParticipant(null);
     }
   };
 
   // Use useMemo to memoize the value object
   const value: AuthContextValue = useMemo(
-    () => ({ token, setToken, otp, setOtp, handleLogin, handleLogout, user, setUser, user_, permissions, mainCompany, setMainCompany }),
-    [token, setToken, otp, setOtp, handleLogin, handleLogout, user, setUser, user_, permissions, mainCompany, setMainCompany]
+    () => ({ token, setToken, otp, setOtp, handleLogin, handleLogout, user, setUser, user_, permissions, resolvedPermissions, mainCompany, setMainCompany, participant, setParticipant }),
+    [token, setToken, otp, setOtp, handleLogin, handleLogout, user, setUser, user_, permissions, resolvedPermissions, mainCompany, setMainCompany, participant, setParticipant]
   );
 
   if (!apiIsOnline) {

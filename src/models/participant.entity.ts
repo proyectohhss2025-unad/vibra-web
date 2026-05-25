@@ -1,38 +1,52 @@
 import { BaseModel } from "./basic.models";
-import { DocumentType } from "./documentType.entity";
 
 export class Participant implements BaseModel {
-    name: string;
-    nit: string;
-    address: string;
-    phoneNumber: string;
-    email: string;
-    transactions?: any[];
-    managerData: {
-        name: string;
-        documentType: DocumentType;
-        document: string;
-        email: string;
-        phoneNumber: string;
-    };
-    creditLimit: number;
-    avatar: string;
+    userId: string;
+    nickname: string;
+    avatar?: string;
+    points: number;
+    level: 'bronce' | 'plata' | 'oro' | 'platino' | 'diamante';
+    currentStreak: number;
+    maxStreak: number;
+    totalActivitiesCompleted: number;
+    lastActivityDate?: Date;
+    currentCourse?: string;
+    isActive: boolean;
+
+    // Campos legacy (compatibilidad)
+    name?: string;
+    nit?: string;
+    address?: string;
+    phoneNumber?: string;
+    email?: string;
+    creditLimit?: number;
 }
 
 export interface Participant extends BaseModel {
-    name: string;
-    nit: string;
-    address: string;
-    phoneNumber: string;
-    email: string;
-    transactions?: any[];
-    managerData: {
+    userId: string;
+    nickname: string;
+    avatar?: string;
+    points: number;
+    level: 'bronce' | 'plata' | 'oro' | 'platino' | 'diamante';
+    currentStreak: number;
+    maxStreak: number;
+    totalActivitiesCompleted: number;
+    lastActivityDate?: Date;
+    currentCourse?: string;
+    isActive: boolean;
+
+    // Campos legacy
+    name?: string;
+    nit?: string;
+    address?: string;
+    phoneNumber?: string;
+    email?: string;
+    creditLimit?: number;
+    managerData?: {
         name: string;
-        documentType: DocumentType;
         document: string;
+        documentType: any;
         email: string;
         phoneNumber: string;
     };
-    creditLimit: number;
-    avatar: string;
 }

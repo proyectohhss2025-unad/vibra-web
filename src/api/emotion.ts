@@ -1,126 +1,192 @@
+/**
+ * API para gestionar emociones (emotions)
+ * Alineado con vibra-api (NestJS) y la colección emotions
+ */
+
 import { config } from '@/config/config';
-import { User } from '@/models/user.entity';
-import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import axios from 'axios';
-import logger from '../config/logger-dev';
+import { Emotion } from '@/models/emotion.entity';
 
 const environment = process.env.NODE_ENV || 'development';
 const configAPI = {
     baseURL: config[environment].apiDashboard,
 };
-const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
 
-export const createEmotion = async (_id: string, name: string, description: string, category: string, intensity: number, createdBy: string) => {
+// ─── DTOs ────────────────────────────────────────────────────────────
+
+export interface CreateEmotionPayload {
+    id?: string;
+    name: string;
+    description?: string;
+    orientationNote?: string;
+    icono: string;
+    percentNote?: number;
+    category?: 'Positiva' | 'Negativa' | 'Neutra' | 'Basica' | 'Compleja';
+    intensity?: number;
+}
+
+export interface UpdateEmotionPayload extends Partial<CreateEmotionPayload> {
+    isActive?: boolean;
+}
+
+// ─── Funciones API ────────────────────────────────────────────────────
+
+/**
+ * Obtiene todas las emociones con paginación
+ * GET /api/emotions?page=&limit=
+ */
+export const getAll = async (page: number, limit: number): Promise<{ data: Emotion[]; total: number }> => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/api/emotion`, {
-            _id,
-            name,
-            description,
-            category,
-            intensity,
-            createdBy,
-            editedBy: createdBy
+        const response = await fetch(`${configAPI.baseURL}/api/emotions?page=${page}&limit=${limit}`);
+        if (!response.ok) return { data: [], total: 0 };
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener emociones:', error);
+        return { data: [], total: 0 };
+    }
+};
+
+/**
+ * Obtiene una emoción por su ID
+ * GET /api/emotions/:id
+ */
+export const getById = async (id: string): Promise<Emotion | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/emotions/${id}`);
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener emoción por ID:', error);
+        return null;
+    }
+};
+
+/**
+ * Crea una nueva emoción
+ * POST /api/emotions
+ */
+export const create = async (data: CreateEmotionPayload): Promise<Emotion | null> => {
+    try {
+        const response = await fetch(`${configAPI.baseURL}/api/emotions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
         });
-
-        return response.data.emotion;
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error al crear emoción:', response.status, errorText);
+            throw new Error(`Error al crear emoción (${response.status}): ${errorText.slice(0, 300)}`);
+        }
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
-        return null;
+        console.error('Error en create emoción:', error);
+        throw error;
     }
-}
+};
 
-export const getEmotionById = async (emotionId: string) => {
+/**
+ * Actualiza una emoción existente
+ * PUT /api/emotions/:id
+ */
+export const update = async (id: string, data: UpdateEmotionPayload): Promise<Emotion | null> => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/api/emotion/by-id`, {
-            id: emotionId,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        const response = await fetch(`${configAPI.baseURL}/api/emotions/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
         });
-        return response.data?.emotion;
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error al actualizar emoción:', response.status, errorText);
+            throw new Error(`Error al actualizar emoción (${response.status}): ${errorText.slice(0, 300)}`);
+        }
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
-        return null;
+        console.error('Error en update emoción:', error);
+        throw error;
     }
-}
+};
 
-export const getEmotionByName = async (name: string) => {
+/**
+ * Cambia el estado activo/inactivo (soft delete / restore)
+ * DELETE /api/emotions/:id
+ */
+export const toggleActive = async (id: string): Promise<Emotion | null> => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/api/emotion/by-name`, {
-            body: {
-                name,
-            }
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
+        const response = await fetch(`${configAPI.baseURL}/api/emotions/${id}`, {
+            method: 'DELETE',
         });
-
-        return response.data.emotion;
+        if (!response.ok) return null;
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error al cambiar estado de emoción:', error);
         return null;
     }
-}
+};
 
-export const searchByQuery = async (query: string) => {
+/**
+ * Obtiene una emoción por nombre exacto
+ * GET /api/emotions/by-name/:name
+ */
+export const getByName = async (name: string): Promise<Emotion | null> => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/emotion/search?searchTerm=${query}`);
-
-        return response.data;
+        const response = await fetch(`${configAPI.baseURL}/api/emotions/by-name/${encodeURIComponent(name)}`);
+        if (!response.ok) return null;
+        return await response.json();
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error al obtener emoción por nombre:', error);
         return null;
     }
-}
+};
 
-export const getAllEmotions = async (currentPage: number, pageSize: number) => {
+// ─── Funciones de Analítica ───────────────────────────────────────────
+
+/**
+ * Obtiene la distribución de emociones registradas (para gráfica donut)
+ * GET /api/emotions/distribution?startDate=&endDate=&courseId=
+ */
+export const getEmotionDistribution = async (
+    startDate?: string,
+    endDate?: string,
+    courseId?: string,
+): Promise<{ name: string; value: number; icono: string }[]> => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/emotion/all?page=${currentPage}&rows=${pageSize}`);
-        return response.data;
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (courseId) params.append('courseId', courseId);
+        const queryStr = params.toString();
+        const url = `${configAPI.baseURL}/api/emotions/distribution${queryStr ? `?${queryStr}` : ''}`;
+        const response = await fetch(url);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
     } catch (error) {
-        logger.error('Error:', error);
-        return null;
+        console.error('Error al obtener distribución de emociones:', error);
+        return [];
     }
-}
+};
 
-export const getAllEmotionsByCategory = async (category: string, currentPage: number, pageSize: number) => {
+/**
+ * Obtiene la evolución temporal de emociones registradas por día
+ * GET /api/emotions/evolution?days=&startDate=&endDate=&courseId=
+ */
+export const getEmotionEvolution = async (
+    days: number = 30,
+    startDate?: string,
+    endDate?: string,
+    courseId?: string,
+): Promise<{ date: string; count: number }[]> => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/emotion/byCategory?category=${category}&page=${currentPage}&rows=${pageSize}`);
-        return response.data;
+        const params = new URLSearchParams({ days: days.toString() });
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (courseId) params.append('courseId', courseId);
+        const response = await fetch(`${configAPI.baseURL}/api/emotions/evolution?${params}`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
     } catch (error) {
-        logger.error('Error:', error);
-        return null;
+        console.error('Error al obtener evolución de emociones:', error);
+        return [];
     }
-}
-
-export const setActive = async (_id: string, active: boolean, createdBy: string) => {
-    try {
-        const response = await axios.post(`${configAPI.baseURL}/api/emotion/setActive`, {
-            _id,
-            active,
-            editedBy: createdBy
-        });
-
-        return response.data.emotion;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
-}
-
-export const deleteEmotion = async (_id: string) => {
-    try {
-        const response = await axios.post(`${configAPI.baseURL}/api/emotion/delete`, {
-            _id,
-            deleted: true,
-            deletedBy: user_?.name
-        });
-
-        return response.data.emotion;
-    } catch (error) {
-        logger.error('Error:', error);
-        return null;
-    }
-}
+};

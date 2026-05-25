@@ -6,9 +6,12 @@ import ConfigDataPage from '@/components/config/data-page';
 import EmotionDataPage from '@/components/emotion/data-page';
 import GeneralDashboardComponent from '@/components/general-dashboard';
 import PolicyDataPage from '@/components/policy/data-page';
-import PermissionTemplateDataPage from '@/components/permission/permission-template-data-page';
-import PermissionDataPage from '@/components/permissionTemplate/data-page';
+import PermissionTemplateListPage from '@/components/permissionTemplate/data-page';
+import PermissionListPage from '@/components/permission/data-page';
 import PreTestDataPage from '@/components/preTest/data-page';
+import TestListPage from '@/components/test/test-list-page';
+import CourseListPage from '@/components/course/course-list-page';
+import ContactDataPage from '@/components/contact/data-page';
 //import DashboardReports from '@/components/reports/dashboard-reports';
 import RoleDataPage from '@/components/role/data-page';
 import UserDataPage from '@/components/user/data-page';
@@ -40,7 +43,7 @@ export const items = [
     component: DashboardReports,
     isActive: true,
     children: [],
-  },*/
+  },
   {
     _id: '15',
     name: 'PreTests',
@@ -51,6 +54,19 @@ export const items = [
     icon: 'ClipboardListIcon',
     permissionID: '15',
     component: PreTestDataPage,
+    isActive: true,
+    children: [],
+  },*/
+  {
+    _id: '41',
+    name: 'tests',
+    href: '/Test/dashboard-Test',
+    label: 'Tests',
+    color: '#EAEAEA',
+    description: 'Gestión de Tests',
+    icon: 'ClipboardListIcon',
+    permissionID: '15',
+    component: TestListPage,
     isActive: true,
     children: [],
   },
@@ -138,6 +154,17 @@ export const items = [
         isActive: true,
       },
       {
+        _id: '39',
+        name: 'courses',
+        href: '/course/course-table',
+        label: 'Cursos',
+        color: '#EAEAEA',
+        description: 'Gestión de cursos educativos',
+        icon: 'AcademicCapIcon',
+        component: CourseListPage,
+        isActive: true,
+      },
+      {
         _id: '32',
         name: 'role',
         href: '/role/role-table',
@@ -154,9 +181,9 @@ export const items = [
         href: '/permission/permission-table',
         label: 'Permisos',
         color: '#EAEAEA',
-        description: getSafeKeyFromStorage('Managing permissions'),
+        description: getSafeKeyFromStorage('Managing individual permissions'),
         icon: 'KeyIcon',
-        component: PermissionDataPage,
+        component: PermissionListPage,
         isActive: true,
       },
       {
@@ -165,9 +192,9 @@ export const items = [
         href: '/permissionTemplate/table',
         label: 'Plantillas',
         color: '#EAEAEA',
-        description: getSafeKeyFromStorage('Managing permission templates of roles'),
+        description: getSafeKeyFromStorage('Group permissions into templates assignable to roles'),
         icon: 'TemplateIcon',
-        component: PermissionTemplateDataPage,
+        component: PermissionTemplateListPage,
         isActive: true,
       },
       {
@@ -186,12 +213,24 @@ export const items = [
         _id: '38',
         name: 'policies',
         href: '/policy/policy-table',
-        label: 'Policies',
+        label: 'Políticas',
         color: '#EAEAEA',
         description: getSafeKeyFromStorage('More info...'),
         icon: 'DocumentTextIcon',
         permissionID: '11',
         component: PolicyDataPage,
+        isActive: true,
+      },
+      {
+        _id: '42',
+        name: 'contact',
+        href: '/contact/contact-table',
+        label: 'Contacto',
+        color: '#EAEAEA',
+        description: 'Gestión de mensajes de contacto',
+        icon: 'MailIcon',
+        permissionID: '11',
+        component: ContactDataPage,
         isActive: true,
       },
       {

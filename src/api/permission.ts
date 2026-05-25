@@ -1,7 +1,7 @@
 import { config } from '@/config/config';
 import { Permission } from '@/models/permission.entity';
 import { User } from '@/models/user.entity';
-import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
+import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
 import logger from '../config/logger-dev';
 
@@ -13,22 +13,26 @@ const configAPI = {
 
 const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
 
-export const createPermission = async (permission: Permission) => {
+export const createPermission = async (permission: any) => {
     try {
-        const permission_ = {
+        const payload = {
             name: permission.name,
             description: permission.description,
             isActive: permission.isActive,
-            permissionCategory: permission.permissionCategory?._id,
-            createdBy: user_?.name
-        }
-        const response = await axios.post(`${configAPI.baseURL}/api/permissions`, {
-            ...permission_,
+            permissionCategory: permission.permissionCategory?._id || permission.permissionCategory || null,
+            createdBy: permission.createdBy || user_?.name,
             editedBy: user_?.name,
-            _id: permission._id ?? null,
-        });
+        };
 
-        return response.data.permission;
+        if (permission._id) {
+            // Actualizar
+            const response = await axios.put(`${configAPI.baseURL}/api/permissions/${permission._id}`, payload);
+            return response.data;
+        } else {
+            // Crear
+            const response = await axios.post(`${configAPI.baseURL}/api/permissions`, payload);
+            return response.data;
+        }
     } catch (error) {
         logger.error('Error:', error);
         return null;
@@ -37,15 +41,8 @@ export const createPermission = async (permission: Permission) => {
 
 export const getPermissionById = async (id: string) => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/id`, {
-            id,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        return response.data.permission;
+        const response = await axios.get(`${configAPI.baseURL}/api/permissions/${id}`);
+        return response.data;
     } catch (error) {
         logger.error('Error:', error);
         return null;
@@ -79,9 +76,10 @@ export const searchByQuery = async (query: string) => {
     }
 }
 
-export const getAllPermissions = async (currentPage: number, pageSize: number) => {
+export const getAllPermissions = async (currentPage?: number, pageSize?: number) => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/permissions/all?page=${currentPage}&rows=${pageSize}`);
+        const params = currentPage && pageSize ? `?page=${currentPage}&rows=${pageSize}` : '';
+        const response = await axios.get(`${configAPI.baseURL}/api/permissions${params}`);
         return response.data;
     } catch (error) {
         logger.error('Error:', error);
@@ -108,6 +106,23 @@ export const getAllCategories = async (currentPage: number, pageSize: number) =>
         return null;
     }
 }
+
+/**
+ * Obtiene los permisos resueltos del usuario autenticado
+ * desde el endpoint unificado GET /api/auth/my-permissions
+ */
+export const getMyPermissions = async () => {
+  try {
+    const token = getSafeKeyFromStorage('token');
+    const response = await axios.get(`${configAPI.baseURL}/api/auth/my-permissions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data; // { isSuperAdmin, role, permissions[], serials[] }
+  } catch (error) {
+    logger.error('Error fetching my permissions:', error);
+    return null;
+  }
+};
 
 export const getAllPermissionsByUser = async (userId: string, currentPage: number, pageSize: number) => {
     try {

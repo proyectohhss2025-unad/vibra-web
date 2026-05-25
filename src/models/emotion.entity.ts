@@ -7,6 +7,9 @@ export interface Emotion extends BaseModel {
     description?: string;
     icono: string;
     percentNote: number;
+    category?: 'Positiva' | 'Negativa' | 'Neutra' | 'Basica' | 'Compleja';
+    intensity?: number;
+    isActive: boolean;
 }
 
 export class Emotion implements BaseModel {
@@ -16,4 +19,7 @@ export class Emotion implements BaseModel {
     description?: string;
     icono!: string;
     percentNote: number = 0;
+    category?: 'Positiva' | 'Negativa' | 'Neutra' | 'Basica' | 'Compleja';
+    intensity?: number;
+    isActive: boolean = true;
 }

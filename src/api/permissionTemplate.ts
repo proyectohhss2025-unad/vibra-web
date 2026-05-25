@@ -14,18 +14,15 @@ const configAPI = {
 
 const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
 
-export const createPermissionTemplate = async (permissionTemplate: PermissionTemplate) => {
+export const createPermissionTemplate = async (permissionTemplate: PermissionTemplate & { permissions?: string[] }) => {
     try {
-        const permissionTemplate_ = {
+        const response = await axios.post(`${configAPI.baseURL}/api/permission-templates`, {
+            _id: permissionTemplate._id ?? null,
             name: permissionTemplate.name,
             description: permissionTemplate.description,
             isActive: permissionTemplate.isActive,
-            createdBy: user_?.name
-        }
-
-        const response = await axios.post(`${configAPI.baseURL}/api/permission-templates`, {
-            ...permissionTemplate_,
-            _id: permissionTemplate._id ?? null,
+            permissions: permissionTemplate.permissions || [],
+            createdBy: user_?.name,
             editedBy: user_?.name
         });
 
@@ -38,15 +35,9 @@ export const createPermissionTemplate = async (permissionTemplate: PermissionTem
 
 export const getPermissionTemplateById = async (id: string) => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/id`, {
-            id,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        return response.data.permissionTemplate;
+        const response = await axios.get(`${configAPI.baseURL}/api/permission-templates/${id}`);
+        // El API devuelve el objeto directamente (no envuelto en { permissionTemplate })
+        return response.data;
     } catch (error) {
         logger.error('Error:', error);
         return null;

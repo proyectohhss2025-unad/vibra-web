@@ -1,7 +1,7 @@
 'use client'
 
-import { createActivity, getActivityById } from '@/api/activity';
-import { getAllEmotions } from '@/api/emotion';
+import { createActivity, getActivityById, updateActivity, CreateActivityPayload } from '@/api/activity';
+import { getAll as getAllEmotions } from '@/api/emotion';
 import { Activity } from '@/models/activity.entity';
 import { Emotion } from '@/models/emotion.entity';
 import { User } from '@/models/user.entity';
@@ -9,13 +9,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/reg
 import { useTabs } from '@/services/contexts/tabs-context';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { ArrowCircleLeftIcon, PlusCircleIcon, SaveAsIcon, TrashIcon } from '@heroicons/react/outline';
-import { CheckCircleIcon, StarIcon, SupportIcon } from '@heroicons/react/solid';
+import { CheckCircleIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import CardSection from '../ui/card-section';
 import DropdownMenuButton from '../layouts/menu/dropdown-menu-button';
 import Loading from '../layouts/loading/loading';
 import CurrentDateTime from '../utils/current-datetime';
-import './activity.css';
+import WordSearchForm from './forms/WordSearchForm';
+import MatchingConceptsForm from './forms/MatchingConceptsForm';
+import DiceGameForm from './forms/DiceGameForm';
+import EmotionBoxForm from './forms/EmotionBoxForm';
 
 type ActivityComponentProps = {
     activityId?: string;
@@ -39,29 +43,33 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
     const [scheduleYear, setScheduleYear] = useState<number>(new Date().getFullYear());
     const [resources, setResources] = useState<Activity['resources']>([]);
     const [questions, setQuestions] = useState<Activity['questions']>([]);
+    const [tips, setTips] = useState<{ emoji: string; message: string; category?: string }[]>([]);
+    const [games, setGames] = useState<{ type: string; config: any; order: number }[]>([]);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [validateForm, setValidateForm] = useState<boolean>(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
     const router = useRouter();
-    const { closeTab } = useTabs();
+    const { closeTab, closeTabWithRefresh } = useTabs();
 
     const queryActivityId = Array.isArray(router.query._id) ? router.query._id[0] : router.query._id;
     const resolvedActivityId = String(activityId ?? queryActivityId ?? '');
     const currentTabId = resolvedActivityId ? `/Actividad/${resolvedActivityId}` : '/Actividad';
+    const isEditing = !!(resolvedActivityId && resolvedActivityId !== 'undefined' && resolvedActivityId !== 'null');
 
     // Cargar emociones
     useEffect(() => {
         const fetchEmotions = async () => {
             try {
                 const response = await getAllEmotions(1, 100);
-                const emotions: Emotion[] = response?.docs ?? response?.emotions ?? [];
-                const opts = emotions.map((e: Emotion, i: number) => ({
+                const emotions: Emotion[] = response?.data ?? [];
+                const opts = emotions.map((e: Emotion) => ({
                     _id: e._id ?? e.id,
                     name: e.name,
-                    value: i,
+                    value: e._id ?? e.id,
                     label: e.name,
                     icon: 'CheckCircleIcon',
                 }));
@@ -73,7 +81,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         fetchEmotions();
     }, []);
 
-    // Cargar actividad si hay ID
+    // Cargar actividad si hay ID (edición) — con parseo defensivo
     useEffect(() => {
         const getDataActivity = async () => {
             setIsLoading(true);
@@ -81,33 +89,79 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                 const res: any = await getActivityById(resolvedActivityId);
                 if (res?._id) {
                     setActivityID(res._id);
-                    setTitle(res.title ?? '');
-                    setDescription(res.description ?? '');
-                    setDifficulty(res.difficulty ?? 1);
-                    setIsActive(res.isActive ?? true);
-                    setResources(res.resources ?? []);
-                    setQuestions(res.questions ?? []);
-                    if (res.schedule) {
-                        setScheduleDate(res.schedule.date ? new Date(res.schedule.date).toISOString().split('T')[0] : '');
-                        setScheduleWeek(res.schedule.weekNumber ?? 1);
-                        setScheduleYear(res.schedule.year ?? new Date().getFullYear());
+                    setTitle(typeof res.title === 'string' ? res.title : '');
+                    setDescription(typeof res.description === 'string' ? res.description : '');
+                    setDifficulty(typeof res.difficulty === 'number' ? res.difficulty : 1);
+                    setIsActive(typeof res.isActive === 'boolean' ? res.isActive : true);
+
+                    // Recursos: asegurar estructura correcta
+                    const rawResources = Array.isArray(res.resources) ? res.resources : [];
+                    setResources(rawResources.map((r: any) => ({
+                        type: (r.type === 'video' || r.type === 'audio') ? r.type : 'video',
+                        url: typeof r.url === 'string' ? r.url : '',
+                        duration: typeof r.duration === 'number' ? r.duration : 0,
+                        metadata: r.metadata ?? { author: '', language: '' },
+                    })));
+
+                    // Preguntas: asegurar estructura correcta
+                    const rawQuestions = Array.isArray(res.questions) ? res.questions : [];
+                    setQuestions(rawQuestions.map((q: any) => ({
+                        id: typeof q.id === 'string' ? q.id : `q${Date.now()}`,
+                        questionText: typeof q.questionText === 'string' ? q.questionText : '',
+                        type: (q.type === 'multiple' || q.type === 'open') ? q.type : 'open',
+                        options: Array.isArray(q.options) ? q.options : [],
+                        correctAnswer: typeof q.correctAnswer === 'string' ? q.correctAnswer : undefined,
+                        points: typeof q.points === 'number' ? q.points : 5,
+                    })));
+
+                    // Schedule: puede venir como objeto, null, undefined
+                    if (res.schedule && typeof res.schedule === 'object') {
+                        const sched = res.schedule;
+                        setScheduleDate(sched.date ? new Date(sched.date).toISOString().split('T')[0] : '');
+                        setScheduleWeek(typeof sched.weekNumber === 'number' ? sched.weekNumber : 1);
+                        setScheduleYear(typeof sched.year === 'number' ? sched.year : new Date().getFullYear());
                     }
-                    // Emoción: puede venir como objeto o como $oid string
-                    const emotionId = res.emotion?._id ?? res.emotion?.['$oid'] ?? res.emotion ?? '';
-                    setIdEmotionSelected(String(emotionId));
+
+                    // Tips: cargar tips existentes
+                    if (Array.isArray(res.tips)) {
+                        setTips(res.tips.map((t: any) => ({
+                            emoji: typeof t.emoji === 'string' ? t.emoji : '😊',
+                            message: typeof t.message === 'string' ? t.message : '',
+                            category: typeof t.category === 'string' ? t.category : undefined,
+                        })));
+                    }
+
+                    // Juegos: cargar juegos existentes
+                    if (Array.isArray(res.games)) {
+                        setGames(res.games.map((g: any) => ({
+                            type: g.type,
+                            config: g.config || {},
+                            order: typeof g.order === 'number' ? g.order : 0,
+                        })));
+                    }
+
+                    // Emoción: puede venir como objeto {_id, name}, string, o {$oid: '...'}
+                    const emotionId = typeof res.emotion === 'object' && res.emotion !== null
+                        ? (res.emotion._id ?? res.emotion['$oid'] ?? '')
+                        : (typeof res.emotion === 'string' ? res.emotion : '');
+                    setIdEmotionSelected(emotionId);
+                } else {
+                    console.warn('Actividad no encontrada:', resolvedActivityId);
+                    setError('No se encontró la actividad solicitada');
                 }
             } catch (err: any) {
-                setError(err.message);
+                console.error('Error cargando actividad:', err);
+                setError(err.message || 'Error al cargar la actividad');
             } finally {
                 setIsLoading(false);
             }
         };
 
         setActivityID(resolvedActivityId);
-        if (resolvedActivityId && resolvedActivityId !== 'undefined' && resolvedActivityId !== 'null') {
+        if (isEditing) {
             getDataActivity();
         }
-    }, [resolvedActivityId]);
+    }, [resolvedActivityId, isEditing]);
 
     // Sincronizar label de emoción cuando cargan las opciones
     useEffect(() => {
@@ -121,41 +175,90 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         setValidateForm(!!(title && idEmotionSelected));
     }, [title, idEmotionSelected]);
 
-    const handleSubmit = async (e) => {
+    // ── Validación cliente antes de enviar ─────────────────────────────
+    const validatePayload = (): string | null => {
+        if (!title.trim()) return 'El título es obligatorio';
+        if (!idEmotionSelected) return 'Debe seleccionar una emoción';
+        if (difficulty < 1 || difficulty > 5) return 'La dificultad debe estar entre 1 y 5';
+        return null;
+    };
+
+    // ── Envío del formulario ───────────────────────────────────────────
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setError('');
+        setSuccess('');
+
+        const validationError = validatePayload();
+        if (validationError) {
+            setError(validationError);
+            return;
+        }
+
+        setIsSubmitting(true);
+
         try {
-            const payload: any = {
-                _id: activityID || null,
-                title,
-                description,
+            // Sanitizar resources: limpiar campos vacíos
+            const cleanResources = (resources ?? [])
+                .filter(r => r.url.trim() !== '')
+                .map(r => ({
+                    type: r.type,
+                    url: r.url.trim(),
+                    duration: r.duration ?? 0,
+                    metadata: r.metadata ?? { author: '', language: '' },
+                }));
+
+            // Sanitizar questions: limpiar preguntas vacías
+            const cleanQuestions = (questions ?? [])
+                .filter(q => q.questionText.trim() !== '')
+                .map(q => ({
+                    id: q.id,
+                    questionText: q.questionText.trim(),
+                    type: q.type,
+                    options: q.type === 'multiple' ? (q.options ?? []).filter(o => o.trim() !== '') : undefined,
+                    correctAnswer: q.type === 'multiple' ? q.correctAnswer : undefined,
+                    points: q.points,
+                }));
+
+            const payload: CreateActivityPayload = {
+                title: title.trim(),
+                description: description?.trim() || undefined,
                 difficulty,
                 isActive,
                 emotion: idEmotionSelected,
-                resources,
-                questions,
+                resources: cleanResources,
+                questions: cleanQuestions,
+                tips: (tips ?? []).filter(t => t.message.trim() !== ''),
+                games: (games ?? []).filter(g => g.type).map(g => ({ ...g, config: g.config })),
                 schedule: scheduleDate ? {
                     date: new Date(scheduleDate),
                     weekNumber: scheduleWeek,
                     year: scheduleYear,
                 } : undefined,
-                createdBy: user.name,
-                editedBy: user.name,
             };
-            const response = await createActivity(
-                payload._id, payload.title, payload.description, '',
-                new Date(), new Date(), [], '', user.name
-            );
-            if (response) {
-                setSuccess('Actividad guardada exitosamente');
+
+            if (isEditing) {
+                await updateActivity(activityID, payload);
             } else {
-                setError('Error al guardar la actividad');
+                await createActivity(payload);
             }
+
+            setSuccess(isEditing ? 'Actividad actualizada exitosamente' : 'Actividad creada exitosamente');
+            setTimeout(() => closeTabWithRefresh(currentTabId, true), 1500);
         } catch (err: any) {
-            setError(err.message);
+            console.error('[Form] Error al guardar:', err);
+            setError(err.message || 'Error inesperado al guardar la actividad');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleCancel = () => closeTab(currentTabId);
+    const handleCancel = () => {
+        if (!isSubmitting) closeTab(currentTabId);
+    };
+    const handleBackToList = () => {
+        if (!isSubmitting) closeTabWithRefresh(currentTabId, true);
+    };
 
     const handleClean = () => {
         setSuccess(''); setTitle(''); setDescription(''); setActivityID('');
@@ -164,7 +267,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         window.scrollTo(0, 0);
     };
 
-    // Recursos
+    // ── Recursos ──────────────────────────────────────────────────────
     const addResource = () => setResources([...(resources ?? []), { type: 'video', url: '', duration: 0, metadata: { author: '', language: '' } }]);
     const removeResource = (i: number) => setResources((resources ?? []).filter((_, idx) => idx !== i));
     const updateResource = (i: number, field: string, value: any) => {
@@ -173,8 +276,8 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         setResources(updated);
     };
 
-    // Preguntas
-    const addQuestion = () => setQuestions([...(questions ?? []), { id: `q${Date.now()}`, questionText: '', type: 'open', points: 5 }]);
+    // ── Preguntas ─────────────────────────────────────────────────────
+    const addQuestion = () => setQuestions([...(questions ?? []), { id: `q${Date.now()}`, questionText: '', type: 'open' as const, points: 5 }]);
     const removeQuestion = (i: number) => setQuestions((questions ?? []).filter((_, idx) => idx !== i));
     const updateQuestion = (i: number, field: string, value: any) => {
         const updated = [...(questions ?? [])];
@@ -199,150 +302,159 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         setQuestions(updated);
     };
 
-    const renderOption = ({ label }) => label;
+    // ── Tips motivacionales ────────────────────────────────────────────
+    const addTip = () => setTips([...(tips ?? []), { emoji: '😊', message: '', category: undefined }]);
+    const removeTip = (i: number) => setTips((tips ?? []).filter((_, idx) => idx !== i));
+    const updateTip = (i: number, field: string, value: any) => {
+        const updated = [...(tips ?? [])];
+        updated[i] = { ...updated[i], [field]: value };
+        setTips(updated);
+    };
+
+    // ── Juegos de la actividad ─────────────────────────────────────────
+    const addGame = (type: string) => {
+        const defaults: Record<string, Record<string, any>> = {
+            WordSearch: { words: [], gridSize: 9, timeLimit: 300 },
+            MatchingConcepts: { conceptPairs: [], timeLimit: 180 },
+            DiceGame: { questions: [] },
+            EmotionBox: { emotions: [], timeLimit: 120, showInstructions: true },
+        };
+        setGames([...(games ?? []), { type, config: defaults[type] || {}, order: (games?.length ?? 0) + 1 }]);
+    };
+    const removeGame = (i: number) => setGames((games ?? []).filter((_, idx) => idx !== i));
+    const updateGameConfig = (i: number, field: string, value: any) => {
+        const updated = [...(games ?? [])];
+        updated[i] = { ...updated[i], config: { ...updated[i].config, [field]: value } };
+        setGames(updated);
+    };
+
+    const renderOption = ({ label }: { label: string }) => label;
 
     if (isLoading) return <Loading />;
 
     return (
-        <div className='w-full h-full px-4 mt-4'>
-            <div className="hidden flex-col md:flex">
-                <div className="flex-1 space-y-4 pt-6">
-                    <div className="flex items-center justify-between space-y-2">
-                        <h2 className="text-3xl font-bold tracking-tight ml-2">
-                            {activityID ? 'Editar actividad' : 'Nueva actividad'}
-                        </h2>
-                        <div className="flex items-center space-x-2">
-                            <Card className="col-span-12 bg-white rounded-md px-2 pl-2 pb-1">
-                                <CurrentDateTime />
-                            </Card>
-                        </div>
-                    </div>
-                </div>
+        <div className='w-full'>
+            <div className="hidden md:flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold tracking-tight">
+                    {isEditing ? 'Editar actividad' : 'Nueva actividad'}
+                </h2>
+                <Card className="bg-white rounded-md px-3 py-1">
+                    <CurrentDateTime />
+                </Card>
             </div>
 
-            <Card className="col-span-4 bg-white rounded-md w-full mt-3">
-                <CardHeader>
+            <Card className="w-full mt-3 overflow-hidden">
+                <CardHeader className="pb-3">
                     <CardTitle className='flex items-center justify-between'>
                         <div>Gestión de Actividades</div>
-                        <div className="flex items-center justify-end">
-                            <StarIcon data-tooltip-id="my-tooltip-t" data-tooltip-content="Favoritos"
-                                className="justify-end h-7 w-7 text-blue-600 mt-0 mr-2" onClick={() => {}} />
-                            <SupportIcon data-tooltip-id="my-tooltip-t" data-tooltip-content="Ayuda"
-                                className="justify-end h-7 w-7 text-blue-600 mt-0 mr-2" />
-                        </div>
                     </CardTitle>
-                    <CardDescription className='mt-0 mb-0'>
+                    <CardDescription>
                         Cree y gestione actividades, configure recursos, preguntas y programación
                     </CardDescription>
                 </CardHeader>
 
-                <CardContent>
+                <CardContent className="px-4">
                     {!success && (
-                        <form onSubmit={handleSubmit} className='w-full mt-0 ml-6' style={{ marginTop: '-20px' }}>
-                            <div className="w-full">
+                        <form onSubmit={handleSubmit}>
+                            <div className="w-full space-y-6">
 
                                 {/* ── Sección principal ── */}
-                                <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-6 sm:grid-cols-12">
+                                <CardSection title="Información Principal" subtitle="Configure los datos básicos de la actividad">
+                                    <div className="space-y-4">
+                                        {/* Fila: Título + Emoción + Dificultad + Activo */}
+                                        <div className="flex flex-wrap items-end gap-4">
+                                            {/* Título */}
+                                            <div className="flex-[3] max-w-[460px]">
+                                                <label htmlFor="title" className="block text-sm font-medium leading-6 text-gray-900">Título *</label>
+                                                <div className="mt-1 flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-600">
+                                                    <input type="text" id="title" value={title}
+                                                        onChange={e => setTitle(e.target.value)}
+                                                        className="block w-full border-0 bg-transparent py-1.5 px-3 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6 rounded-md"
+                                                        placeholder="Ej: Respiración consciente" required />
+                                                </div>
+                                            </div>
 
-                                    {/* Título */}
-                                    <div className="sm:col-span-8">
-                                        <label htmlFor="title" className="block text-sm font-medium leading-6 text-gray-900">
-                                            {getSafeKeyFromStorage('Title')} *
-                                        </label>
-                                        <div className="mt-2 bg-white flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-600">
-                                            <span className="flex select-none items-center pl-3 text-gray-500 sm:text-sm">activity.title:</span>
-                                            <input type="text" id="title" value={title}
-                                                onChange={e => setTitle(e.target.value)}
-                                                className="block flex-1 border-0 bg-transparent py-1.5 pl-3 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6"
-                                                placeholder="ej: Felicidad" required />
+                                            {/* Emoción */}
+                                            <div className="flex-[2]">
+                                                <label className="block text-sm font-medium leading-6 text-gray-900 mb-1">Emoción *</label>
+                                                <DropdownMenuButton
+                                                    label={labelSelectedEmotion}
+                                                    options={optionsEmotion}
+                                                    renderOption={renderOption}
+                                                    onSelect={(opt: any) => { setIdEmotionSelected(opt._id); setLabelSelectedEmotion(opt.label); }}
+                                                    valueSelected={labelSelectedEmotion}
+                                                    minWidth="w-auto"
+                                                />
+                                            </div>
+
+                                            {/* Dificultad */}
+                                            <div className="w-32">
+                                                <label htmlFor="difficulty" className="block text-sm font-medium leading-6 text-gray-900">Dificultad (1-5)</label>
+                                                <div className="mt-1">
+                                                    <input type="number" id="difficulty" min={1} max={5} value={difficulty}
+                                                        onChange={e => setDifficulty(Number(e.target.value))}
+                                                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
+                                                </div>
+                                            </div>
+
+                                            {/* Activo */}
+                                            <div className="w-auto">
+                                                <label className="block text-sm font-medium leading-6 text-gray-900 mb-1">Activo</label>
+                                                <div className="flex items-center gap-2">
+                                                    <button type="button"
+                                                        onClick={() => setIsActive(true)}
+                                                        className={`px-3 py-1.5 rounded-md text-sm font-semibold ${isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                                        Sí
+                                                    </button>
+                                                    <button type="button"
+                                                        onClick={() => setIsActive(false)}
+                                                        className={`px-3 py-1.5 rounded-md text-sm font-semibold ${!isActive ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                                        No
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Descripción */}
+                                        <div>
+                                            <label htmlFor="description" className="block text-sm font-medium leading-6 text-gray-900">Descripción</label>
+                                            <div className="mt-1">
+                                                <textarea rows={2} id="description" value={description}
+                                                    onChange={e => setDescription(e.target.value)}
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {/* Dificultad */}
-                                    <div className="sm:col-span-2">
-                                        <label htmlFor="difficulty" className="block text-sm font-medium leading-6 text-gray-900">
-                                            Dificultad (1-5)
-                                        </label>
-                                        <div className="mt-2">
-                                            <input type="number" id="difficulty" min={1} max={5} value={difficulty}
-                                                onChange={e => setDifficulty(Number(e.target.value))}
-                                                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
-                                        </div>
-                                    </div>
-
-                                    {/* Activo */}
-                                    <div className="sm:col-span-2 flex flex-col justify-end">
-                                        <label className="block text-sm font-medium leading-6 text-gray-900 mb-2">Activo</label>
-                                        <div className="flex items-center gap-3">
-                                            <button type="button"
-                                                onClick={() => setIsActive(true)}
-                                                className={`px-3 py-1.5 rounded-md text-sm font-semibold ${isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
-                                                Sí
-                                            </button>
-                                            <button type="button"
-                                                onClick={() => setIsActive(false)}
-                                                className={`px-3 py-1.5 rounded-md text-sm font-semibold ${!isActive ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
-                                                No
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Emoción */}
-                                    <div className="sm:col-span-6">
-                                        <label className="block text-sm font-medium leading-6 text-gray-900 mb-2">
-                                            Emoción *
-                                        </label>
-                                        <DropdownMenuButton
-                                            label={labelSelectedEmotion}
-                                            options={optionsEmotion}
-                                            renderOption={renderOption}
-                                            onSelect={(opt) => { setIdEmotionSelected(opt._id); setLabelSelectedEmotion(opt.label); }}
-                                            valueSelected={labelSelectedEmotion}
-                                        />
-                                    </div>
-
-                                    {/* Descripción */}
-                                    <div className="sm:col-span-12">
-                                        <label htmlFor="description" className="block text-sm font-medium leading-6 text-gray-900">
-                                            {getSafeKeyFromStorage('Description')}
-                                        </label>
-                                        <div className="mt-2">
-                                            <textarea rows={3} id="description" value={description}
-                                                onChange={e => setDescription(e.target.value)}
-                                                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
-                                        </div>
-                                    </div>
-                                </div>
+                                </CardSection>
 
                                 {/* ── Programación ── */}
-                                <div className="mt-6 border-t pt-4">
-                                    <p className="text-sm font-semibold text-gray-700 mb-3">Programación</p>
-                                    <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-12">
-                                        <div className="sm:col-span-4">
+                                <CardSection title="Programación" subtitle="Defina la fecha, semana y año de la actividad">
+                                    <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+                                        <div>
                                             <label htmlFor="scheduleDate" className="block text-sm font-medium leading-6 text-gray-900">Fecha</label>
                                             <input type="date" id="scheduleDate" value={scheduleDate}
                                                 onChange={e => setScheduleDate(e.target.value)}
                                                 className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                         </div>
-                                        <div className="sm:col-span-4">
+                                        <div>
                                             <label htmlFor="scheduleWeek" className="block text-sm font-medium leading-6 text-gray-900">Semana</label>
                                             <input type="number" id="scheduleWeek" min={1} max={53} value={scheduleWeek}
                                                 onChange={e => setScheduleWeek(Number(e.target.value))}
                                                 className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                         </div>
-                                        <div className="sm:col-span-4">
+                                        <div>
                                             <label htmlFor="scheduleYear" className="block text-sm font-medium leading-6 text-gray-900">Año</label>
                                             <input type="number" id="scheduleYear" min={2020} value={scheduleYear}
                                                 onChange={e => setScheduleYear(Number(e.target.value))}
                                                 className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                         </div>
                                     </div>
-                                </div>
+                                </CardSection>
 
                                 {/* ── Recursos ── */}
-                                <div className="mt-6 border-t pt-4">
+                                <CardSection title="Recursos Multimedia" subtitle="Agregue videos o audios de apoyo">
                                     <div className="flex items-center justify-between mb-3">
-                                        <p className="text-sm font-semibold text-gray-700">Recursos ({resources?.length ?? 0})</p>
+                                        <p className="text-sm font-medium text-gray-600">Recursos ({resources?.length ?? 0})</p>
                                         <button type="button" onClick={addResource}
                                             className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-500">
                                             <PlusCircleIcon className="h-5 w-5" /> Agregar recurso
@@ -350,7 +462,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                     </div>
                                     {(resources ?? []).map((res, i) => (
                                         <div key={i} className="mb-3 p-3 bg-gray-50 rounded-md border grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-12">
-                                            <div className="sm:col-span-2">
+                                            <div className="sm:col-span-1">
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
                                                 <select value={res.type} onChange={e => updateResource(i, 'type', e.target.value)}
                                                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm">
@@ -362,14 +474,14 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
                                                 <input type="text" value={res.url} onChange={e => updateResource(i, 'url', e.target.value)}
                                                     placeholder="https://..."
-                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 truncate focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
                                             </div>
                                             <div className="sm:col-span-2">
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">Duración (s)</label>
                                                 <input type="number" value={res.duration ?? 0} onChange={e => updateResource(i, 'duration', Number(e.target.value))}
                                                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
                                             </div>
-                                            <div className="sm:col-span-1">
+                                            <div className="sm:col-span-2">
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">Autor</label>
                                                 <input type="text" value={res.metadata?.author ?? ''} onChange={e => updateResource(i, 'metadata', { ...res.metadata, author: e.target.value })}
                                                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
@@ -382,12 +494,12 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                             </div>
                                         </div>
                                     ))}
-                                </div>
+                                </CardSection>
 
                                 {/* ── Preguntas ── */}
-                                <div className="mt-6 border-t pt-4">
+                                <CardSection title="Preguntas" subtitle="Configure las preguntas de la actividad">
                                     <div className="flex items-center justify-between mb-3">
-                                        <p className="text-sm font-semibold text-gray-700">Preguntas ({questions?.length ?? 0})</p>
+                                        <p className="text-sm font-medium text-gray-600">Preguntas ({questions?.length ?? 0})</p>
                                         <button type="button" onClick={addQuestion}
                                             className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-500">
                                             <PlusCircleIcon className="h-5 w-5" /> Agregar pregunta
@@ -396,7 +508,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                     {(questions ?? []).map((q, qi) => (
                                         <div key={qi} className="mb-4 p-3 bg-gray-50 rounded-md border">
                                             <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-12">
-                                                <div className="sm:col-span-7">
+                                                <div className="sm:col-span-6">
                                                     <label className="block text-xs font-medium text-gray-700 mb-1">Texto de la pregunta</label>
                                                     <input type="text" value={q.questionText} onChange={e => updateQuestion(qi, 'questionText', e.target.value)}
                                                         className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
@@ -414,7 +526,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                                     <input type="number" min={1} value={q.points} onChange={e => updateQuestion(qi, 'points', Number(e.target.value))}
                                                         className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
                                                 </div>
-                                                <div className="sm:col-span-1 flex items-end justify-end">
+                                                <div className="sm:col-span-2 flex items-end justify-end">
                                                     <button type="button" onClick={() => removeQuestion(qi)}
                                                         className="text-red-500 hover:text-red-700">
                                                         <TrashIcon className="h-5 w-5" />
@@ -450,74 +562,136 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                             )}
                                         </div>
                                     ))}
-                                </div>
+                                </CardSection>
 
-                            </div>
+                            {/* ── Tips motivacionales ─────────────────────────────── */}
+                            <CardSection title="Tips de Apoyo Emocional" subtitle="Mensajes de ánimo personalizados">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-sm font-medium text-gray-600">Tips ({tips?.length ?? 0})</p>
+                                    <button type="button" onClick={addTip}
+                                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-500">
+                                        <PlusCircleIcon className="h-4 w-4" />
+                                        Agregar tip
+                                    </button>
+                                </div>
+                                {tips.length === 0 && (
+                                    <p className="text-sm text-gray-400 italic">Sin tips configurados. Se usarán los tips por defecto.</p>
+                                )}
+                                {tips.map((tip, i) => (
+                                    <div key={i} className="flex items-start gap-2 mb-2 p-2 bg-gray-50 rounded-md">
+                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                                            <input type="text" value={tip.emoji}
+                                                onChange={e => updateTip(i, 'emoji', e.target.value)}
+                                                className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+                                                placeholder="😊 (emoji)" />
+                                            <input type="text" value={tip.message}
+                                                onChange={e => updateTip(i, 'message', e.target.value)}
+                                                className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+                                                placeholder="Mensaje del tip..." />
+                                            <select value={tip.category ?? ''}
+                                                onChange={e => updateTip(i, 'category', e.target.value || undefined)}
+                                                className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm">
+                                                <option value="">Todas las actividades</option>
+                                                <option value="start">Inicio</option>
+                                                <option value="question">Preguntas</option>
+                                                <option value="wordsearch">Sopa de letras</option>
+                                                <option value="matching">Emparejar</option>
+                                                <option value="emotionbox">Caja emociones</option>
+                                                <option value="dicegame">Juego dados</option>
+                                                <option value="complete">Finalizar</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" onClick={() => removeTip(i)}
+                                            className="text-red-400 hover:text-red-600 mt-1">
+                                            <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </CardSection>
+
+                            {/* ── Juegos de la actividad ──────────────────────────── */}
+                            <CardSection title="Juegos" subtitle="Seleccione y configure los juegos">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-sm font-medium text-gray-600">Juegos ({games?.length ?? 0})</p>
+                                    <div className="flex gap-1 flex-wrap">
+                                        {['WordSearch', 'MatchingConcepts', 'EmotionBox', 'DiceGame'].map(type => (
+                                            <button key={type} type="button" onClick={() => addGame(type)}
+                                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-500 border border-blue-300 rounded px-2 py-1">
+                                                <PlusCircleIcon className="h-3 w-3" />
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {games.length === 0 && (
+                                    <p className="text-sm text-gray-400 italic mb-2">Sin juegos configurados. Solo se mostrará el flujo de preguntas estándar.</p>
+                                )}
+                                {games.map((game, i) => (
+                                    <div key={i} className="border border-gray-200 rounded-md p-3 mb-2 bg-gray-50">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-semibold text-gray-700 bg-blue-100 px-2 py-0.5 rounded">{game.type}</span>
+                                            <button type="button" onClick={() => removeGame(i)}
+                                                className="text-red-400 hover:text-red-600">
+                                                <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                        <div className="text-xs text-gray-500 mb-1">Configuración:</div>
+                                        {game.type === 'WordSearch' && (
+                                            <WordSearchForm config={game.config} onChange={(cfg) => {
+                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                            }} />
+                                        )}
+                                        {game.type === 'MatchingConcepts' && (
+                                            <MatchingConceptsForm config={game.config} onChange={(cfg) => {
+                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                            }} />
+                                        )}
+                                        {game.type === 'DiceGame' && (
+                                            <DiceGameForm config={game.config} onChange={(cfg) => {
+                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                            }} />
+                                        )}
+                                        {game.type === 'EmotionBox' && (
+                                            <EmotionBoxForm config={game.config} onChange={(cfg) => {
+                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                            }} />
+                                        )}
+                                    </div>
+                                ))}
+                            </CardSection>
 
                             {error && (
-                                <div className="rounded-md bg-red-50 p-3 mt-4 mr-10">
+                                <div className="rounded-md bg-red-50 p-3 mt-4">
                                     <p className="text-sm font-medium text-red-800">{error}</p>
                                 </div>
                             )}
 
-                            <div className="flex items-center justify-end gap-x-6 mr-10 mt-6 mb-4">
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none pr-4">
-                                        <ArrowCircleLeftIcon className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                                    </div>
-                                    <button onClick={handleCancel} type="button"
-                                        className="bg-blue-600 hover:bg-blue-500 rounded-md px-3 py-1.5 pl-12 text-sm font-semibold leading-6 text-white">
-                                        Ir atrás
-                                    </button>
-                                </div>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-4">
-                                        <SaveAsIcon className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                                    </div>
-                                    <button type="submit" disabled={!validateForm}
-                                        className={`${validateForm ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-500'} rounded-md px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600`}>
-                                        Guardar actividad
-                                    </button>
-                                </div>
+                            <div className="flex items-center justify-end gap-4 mt-6 mb-4">
+                                <button onClick={handleCancel} type="button"
+                                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 rounded-md px-4 py-2 text-sm font-semibold text-white">
+                                    <ArrowCircleLeftIcon className="h-5 w-5" />
+                                    Ir atrás
+                                </button>
+                                <button type="submit" disabled={!validateForm || isSubmitting}
+                                    className={`inline-flex items-center gap-2 ${validateForm && !isSubmitting ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-500'} rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm`}>
+                                    <SaveAsIcon className="h-5 w-5" />
+                                    {isSubmitting ? 'Guardando...' : 'Guardar actividad'}
+                                </button>
+                            </div>
                             </div>
                         </form>
                     )}
 
                     {success && (
-                        <div className="relative inset-0 flex items-center justify-center z-50 mt-20" style={{ pointerEvents: 'auto' }}>
-                            <div className="bg-white rounded-lg shadow-lg p-8">
-                                <div className="flex h-6 items-center justify-center pt-2">
-                                    <CheckCircleIcon className="h-9 w-9 mr-2" color="#3c763d" />
-                                    <div className="text-sm leading-6">
-                                        <div className="font-medium text-gray-900">
-                                            {activityID ? 'Actividad actualizada con éxito' : 'Actividad creada con éxito'}
-                                        </div>
-                                    </div>
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+                                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+                                    <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
                                 </div>
-                                <div className="mt-0 grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-10">
-                                    <div className="sm:col-span-5">
-                                        <div className="relative mt-8">
-                                            <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-20">
-                                                <ArrowCircleLeftIcon className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                                            </div>
-                                            <button type="button" onClick={handleCancel}
-                                                className="rounded-md bg-green-600 px-3 py-2 pl-12 text-sm font-semibold shadow-sm hover:bg-green-500 text-white">
-                                                Volver a la lista
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="sm:col-span-5">
-                                        <div className="relative mt-8">
-                                            <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-20">
-                                                <PlusCircleIcon className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                                            </div>
-                                            <button type="button" onClick={handleClean}
-                                                className="rounded-md bg-blue-600 px-3 py-2 pl-12 text-sm font-semibold shadow-sm hover:bg-blue-500 text-white">
-                                                Nueva actividad
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+                                <p className="text-sm text-gray-500">{success}</p>
                             </div>
                         </div>
                     )}

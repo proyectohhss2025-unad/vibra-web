@@ -1,380 +1,235 @@
-'use client'
+'use client';
 
-import { createPermission, getAllCategories } from '@/api/permission';
-import { Permission } from '@/models/permission.entity';
+import { createPermission, getAllCategories, getPermissionById } from '@/api/permission';
 import { PermissionCategory } from '@/models/permissionCategory.entity';
 import { User } from '@/models/user.entity';
 import { AuthContext } from '@/services/auth';
+import { useTabs } from '@/services/contexts/tabs-context';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import { ArrowCircleLeftIcon, BeakerIcon, BellIcon, UserCircleIcon } from '@heroicons/react/outline';
-import { CheckCircleIcon, InformationCircleIcon, PlusCircleIcon, SaveAsIcon, StarIcon, SupportIcon, ViewListIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
-import { useContext, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import '../../components/ui/notification/notification.css';
-import Checkbox from '../forms/checkbox';
-import Select from '../forms/select';
-import NotificationInline from '../layouts/icon/notification-inline';
-import './permission.css';
-import ToggleSwitch from '../forms/toggleSwitch';
-import DropdownMenuButton from '../layouts/menu/dropdown-menu-button';
+import React, { useContext, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import CardSection from '@/components/ui/card-section';
+import Loading from '@/components/layouts/loading/loading';
+import { SaveIcon, XCircleIcon } from 'lucide-react';
 
-const PermissionComponent = () => {
-
-    const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
-    const { token, otp } = useContext(AuthContext);
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-    const [labelSelected, setLabelSelected] = useState<string>('Select category');
-
-    useEffect(() => {
-        setIsAuthenticated(!!token && !!otp);
-    }, [token, otp]);
-
-    const router = useRouter();
-    const [userSession, setUserSession] = useState<User>(user_);
-    const permissionClean: Permission = {
-        _id: '',
-        serial: '',
-        name: '',
-        description: '',
-        createdAt: new Date(Date.now()),
-        createdBy: userSession.name,
-        permissionCategory: new PermissionCategory(),
-        isAssigned: false
-    };
-
-    const [permission, setPermission] = useState<Permission>(permissionClean);
-    const [permissions, setPermissions] = useState<Permission[]>([]);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [permissionsCategory, setPermissionsCategory] = useState<PermissionCategory[]>([]);
-    const [idPermissionCategorySelected, setIdPermissionCategorySelected] = useState<string | null>();
-    const [validateForm, setValidateForm] = useState<boolean>(false);
-
-    const [permissionID, setPermissionID] = useState<any>();
-    const [permissionSerial, setPermissionSerial] = useState<string>('');
-    const [permissionName, setPermissionName] = useState<string>('');
-    const [permissionDescription, setPermissionDescription] = useState<string>('');
-    const [permissionIsActive, setPermissionIsActive] = useState<boolean>(false);
-    const [permissionPermissionCategory, setPermissionPermissionCategory] = useState<string>('');
-    const [optionsPermissionsCategory, setOptionsPermissionsCategory] = useState<any[]>([]);
-
-    const { register, formState: { errors } } = useForm({
-        defaultValues: {
-            value: permission.isActive || true,
-        },
-    });
-
-    const locale = 'en-US';
-
-    //#region USE EFFECT
-    useEffect(() => {
-        if (router.query._id) {
-            setPermissionID(router.query._id as unknown as string);
-            setPermissionSerial(router.query.serial as unknown as string);
-            setPermissionName(router.query.name as unknown as string);
-            setPermissionDescription(router.query.description as string);
-            setPermissionIsActive(router.query.isActive as unknown as boolean);
-            setPermissionPermissionCategory(router.query.permissionCategory as unknown as string);
-            setIdPermissionCategorySelected(router.query.permissionCategory as unknown as string);
-
-
-            const selectedOptionDocumentType: any = optionsPermissionsCategory.find((option) => option._id === router.query.permissionCategory);
-            setLabelSelected(selectedOptionDocumentType?.name);
-
-        }
-    }, [router.query._id, optionsPermissionsCategory?.length]);
-
-    useEffect(() => {
-        setError('');
-        setSuccess('');
-        const setData = async () => {
-            try {
-                //logger.info('permissionID: ', permissionID);
-                setPermission({
-                    _id: permissionID || '',
-                    serial: permissionSerial,
-                    name: permissionName,
-                    description: permissionDescription,
-                    permissionCategory: {
-                        _id: permissionPermissionCategory
-                    } as unknown as PermissionCategory,
-                    createdAt: new Date(Date.now()),
-                    createdBy: userSession.name,
-                    isAssigned: false
-                });
-            } catch (error) {
-                setError(error.message);
-            }
-        }
-        if (permissionID) {
-            setData();
-        }
-    }, [permissionID, permissionPermissionCategory, permissionDescription, permissionName, permissionSerial, userSession.name]);
-
-    useEffect(() => {
-        if (permissionName && permissionDescription && permissionIsActive && idPermissionCategorySelected) {
-            setValidateForm(true);
-        }
-    }, [permissionName, permissionDescription, permissionIsActive, idPermissionCategorySelected]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const processResponse = await getAllCategories(1, 50);
-                if (processResponse) {
-                    setPermissionsCategory(processResponse.permissionsCategory);
-
-                    processResponse.permissionsCategory.forEach((element: PermissionCategory, index) => {
-                        optionsPermissionsCategory?.push({ _id: element?._id, description: element?.description, name: element.name, value: index, label: element.name, icon: 'CheckCircleIcon' });
-                    });
-                    setOptionsPermissionsCategory(optionsPermissionsCategory);
-                }
-            } catch (error) {
-                setError(error.message);
-            }
-        };
-        fetchData();
-    }, []);
-
-
-    //#endregion
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        try {
-            const permissionCopy = { ...permission }; // Create a copy of the activity object to prevent mutating the original state directly
-            permissionCopy.name = permissionName;
-            permissionCopy.description = permissionDescription;
-            permissionCopy.isActive = permissionIsActive;
-            permissionCopy.permissionCategory = {
-                _id: idPermissionCategorySelected
-            } as unknown as PermissionCategory;
-
-            const permissionResponse = await createPermission(permissionCopy);
-            if (permissionResponse) {
-                setSuccess('Permission created successfully');
-                setPermission(permissionClean);
-            } else {
-                setError('Error creating permission');
-            }
-        } catch (error) {
-            setError(error.message);
-        }
-    };
-
-    const handleCancel = () => {
-        router.replace('/permission/permission-table');
-    };
-
-    const handleOnChange = (e: any) => {
-        setIdPermissionCategorySelected(e)
-    };
-
-    const handleChangeSelected = (option: any) => {
-        console.log('Selected option: ', option);
-        if (!option) {
-            return;
-        }
-
-        setLabelSelected(option?.label);
-        setIdPermissionCategorySelected(option?._id);
-    };
-
-
-    const handleChange = (e: any) => {
-        setPermissionIsActive(e);
-    };
-
-    const renderOption = ({ label }) => label;
-
-    if (!isAuthenticated) {
-        return;
-    }
-
-    return (
-        <div id='activity' className='mb-9'>
-            {!success && <form onSubmit={handleSubmit}>
-                <div className="flex space-y-12 w-full max-w-4xl max-h-dvh">
-                    <div className="pb-8">
-                        <StarIcon data-tooltip-id="my-tooltip-t"
-                            data-tooltip-content="Generate support and new features"
-                            style={{ float: 'right' }} className="justify-end h-7 w-7 text-blue-600 mt-0 mr-2"
-                            onClick={() => {
-                                // setShowModal(true);
-                                //setIsLoading(true);
-                            }} />
-                        <SupportIcon data-tooltip-id="my-tooltip-t"
-                            data-tooltip-content="Init tour"
-                            style={{ float: 'right' }} className='justify-end h-7 w-7 text-blue-600 mt-0 mr-2'
-                        />
-                        <h1 className="h1-2 flex text-base font-semibold leading-9 text-gray-900">
-                            <UserCircleIcon data-tooltip-id="my-tooltip-t"
-                                data-tooltip-content="The approval process loads the information of the .cvs file, in a collection within a database"
-                                style={{ float: 'left' }} name="info" className="h-10 w-10 text-blue-600 mt-0 mr-2" color="#ff0000" /> User permissions
-                        </h1>
-                        <NotificationInline message={success} />
-                        <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-12">
-                            <div className="sm:col-span-4">
-                                <label htmlFor="permissionSerial" className="block text-sm font-medium leading-6 text-gray-900 mb-2">
-                                    Category
-                                </label>
-                                <DropdownMenuButton
-                                    label={labelSelected}
-                                    options={optionsPermissionsCategory}
-                                    renderOption={renderOption}
-                                    onSelect={handleChangeSelected}
-                                    valueSelected={labelSelected}
-                                />
-                            </div>
-                            <div className="sm:col-span-2">
-                                <label htmlFor="permissionSerial" className="block text-sm font-medium leading-6 text-gray-900">
-                                    Serial
-                                </label>
-                                <div className="mt-2">
-                                    <div className="flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-600 sm:max-w-md">
-                                        <span className="flex select-none items-center pl-2 text-gray-500 sm:text-sm">No. </span>
-                                        <input
-                                            type="text"
-                                            name="permissionSerial"
-                                            id="permissionSerial"
-                                            value={permissionSerial}
-                                            placeholder='Autogenerate'
-                                            disabled
-                                            onChange={(e) => {
-                                                setPermissionSerial(e.target.value);
-                                            }}
-                                            className="text-lg md:font-bold block flex-1 text-bold border-0 bg-transparent py-1.5 pl-1 text-gray-900 placeholder:text-gray-800 focus:ring-0 sm:text-sm sm:leading-6"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="sm:col-span-4">
-                                <label htmlFor="permissionName" className="block text-sm font-medium leading-6 text-gray-900">
-                                    Name or alias
-                                </label>
-                                <div className="mt-2">
-                                    <div className="bg-white flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-600 sm:max-w-md">
-                                        <span className="flex select-none items-center pl-3 text-gray-500 sm:text-sm">Name: </span>
-                                        <input
-                                            type="text"
-                                            name="permissionName"
-                                            id="permissionName"
-                                            value={permissionName}
-                                            onChange={(e) => {
-                                                setPermissionName(e.target.value);
-                                            }}
-                                            className="text-lg md:font-bold block flex-1 text-bold border-0 bg-transparent py-1.5 pl-6 text-gray-900 placeholder:text-gray-800 focus:ring-0 sm:text-sm sm:leading-6"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="sm:col-span-2">
-                                <label htmlFor="permissionFlowPositionInProcess" className="block text-sm font-medium leading-6 text-gray-900">
-                                    Is active
-                                </label>
-                                <div className="mt-3">
-                                    <div className="flex sm:max-w-md">
-                                        <ToggleSwitch initialValue={permissionIsActive} label="" handleChange={handleChange} />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-9">
-                            <div className="sm:col-span-9">
-                                <label htmlFor="first-name" className="block text-sm font-medium leading-6 text-gray-900">
-                                    Description
-                                    <InformationCircleIcon data-tooltip-id="my-tooltip-p" data-tooltip-content="Add description for more info about this permission!"
-                                        style={{ float: 'right' }} name="info" className="h-6 w-6 text-blue-500" color="#ff0000" />
-                                </label>
-                                <div className="mt-1">
-                                    <textarea
-                                        name="description"
-                                        id="description"
-                                        data-tooltip-id="my-tooltip-t" data-tooltip-content="Notes!"
-                                        value={permissionDescription}
-                                        onChange={(e) => {
-                                            setPermissionDescription(e.target.value);
-                                        }}
-                                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-0 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-7">
-                        </div>
-                    </div>
-                </div>
-                <div className="mt-6 flex items-center justify-end gap-x-6">
-                    <div className="relative">
-                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none pr-4">
-                            <ArrowCircleLeftIcon name="success" className="h-6 w-8 text-white" color="#FFFFFF" />
-                        </div>
-                        <button onClick={handleCancel} type="button" className="bg-blue-500 rounded hover:bg-blue-600 px-3 py-1.5 pl-12 text-sm font-semibold leading-6 text-white">
-                            Go back
-                        </button>
-                    </div>
-                    <div className="relative">
-                        <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-4">
-                            <SaveAsIcon name="success" className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={!validateForm}
-                            className={`${validateForm ? 'bg-blue-600 hover:bg-blue-500 ' : 'bg-gray-500 hover:bg-gray-500 '}rounded-md px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600`}
-                        >
-                            Save permission
-                        </button>
-                    </div>
-                </div>
-            </form>}
-            {
-                success && <div className="fixed inset-0 flex items-center justify-center z-50" style={{ pointerEvents: 'auto' }} >
-                    <div className="bg-white rounded-lg shadow-lg p-8" >
-                        <div className="flex h-6 items-center justify-center pt-2">
-                            <CheckCircleIcon name="beakerIcon" className="h-9 w-9 text-white-500 mr-2" color="#3c763d" />
-                            <div className="text-sm leading-6">
-                                <label className="font-medium text-gray-900">
-                                    Success in the update permission
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="mt-0 grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-10">
-                            <div className="sm:col-span-5">
-                                <div className="relative mt-8">
-                                    <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-20">
-                                        <ViewListIcon name="viewListIcon" className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => router.push('/permission/permission-table')}
-                                        className="rounded-md bg-green-600 px-3 py-2 pl-12 text-sm font-semibold shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 text-white"
-                                    >
-                                        Go back
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="sm:col-span-5">
-                                <div className="relative mt-8">
-                                    <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none mr-20">
-                                        <PlusCircleIcon name="success" className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => router.replace('/permission/permission')}
-                                        className="rounded-md bg-blue-600 px-3 py-2 pl-12 text-sm font-semibold shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 text-white"
-                                    >
-                                        New permission
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>}
-        </div>
-    );
+type PermissionFormProps = {
+  permissionId?: string;
 };
 
-export default PermissionComponent;
+const PermissionForm: React.FC<PermissionFormProps> = ({ permissionId }) => {
+  const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user') ?? '{}');
+  const { token } = useContext(AuthContext);
+  const router = useRouter();
+  const { closeTabWithRefresh } = useTabs();
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [categories, setCategories] = useState<PermissionCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+
+  const isEditing = !!permissionId;
+
+  useEffect(() => {
+    if (!token) {
+      router.push('/layout');
+    }
+  }, [token, router]);
+
+  useEffect(() => {
+    getAllCategories(1, 50).then((res: any) => {
+      if (res) setCategories(res.items || res.data || []);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!permissionId) return;
+    setIsLoading(true);
+    getPermissionById(permissionId)
+      .then((perm: any) => {
+        if (perm) {
+          setName(perm.name || '');
+          setDescription(perm.description || '');
+          setIsActive(perm.isActive !== false);
+          const cat = perm.permissionCategory as any;
+          if (cat?._id) setSelectedCategoryId(cat._id);
+        }
+      })
+      .catch(() => toast.error('Error al cargar el permiso'))
+      .finally(() => setIsLoading(false));
+  }, [permissionId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      toast.error('El nombre del permiso es obligatorio');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const selectedCategory = categories.find((c) => c._id === selectedCategoryId);
+
+      const payload: any = {
+        _id: permissionId || '',
+        name: name.trim(),
+        description: description.trim(),
+        isActive,
+        permissionCategory: selectedCategory || null,
+        createdBy: user_?.name || '',
+      };
+
+      const result = await createPermission(payload);
+      if (result) {
+        const msg = permissionId ? 'Permiso actualizado exitosamente' : 'Permiso creado exitosamente';
+        setSuccess(msg);
+        setTimeout(() => closeTabWithRefresh(`/Permission/${permissionId || 'new'}`, true), 1500);
+      } else {
+        toast.error('Error al guardar el permiso');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al guardar el permiso');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    closeTabWithRefresh(`/Permission/${permissionId || 'new'}`, true);
+  };
+
+  const selectedCategory = categories.find((c) => c._id === selectedCategoryId);
+
+  if (isLoading) return <Loading />;
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+          <p className="text-sm text-gray-500">{success}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isEditing ? 'Editar Permiso' : 'Nuevo Permiso'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {isEditing ? 'Modifique los datos del permiso' : 'Complete los datos para crear un nuevo permiso'}
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <CardSection title="Información del Permiso" subtitle="Datos generales del permiso">
+          <div className="grid grid-cols-1 gap-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nombre <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: Ver usuarios, Editar actividades"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe el propósito de este permiso"
+                rows={3}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+              />
+            </div>
+          </div>
+        </CardSection>
+
+        <CardSection title="Configuración" subtitle="Categoría y estado del permiso">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Categoría
+              </label>
+              <select
+                value={selectedCategoryId}
+                onChange={(e) => setSelectedCategoryId(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+              >
+                <option value="">Seleccionar categoría...</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              {selectedCategory && (
+                <p className="mt-1.5 text-xs text-gray-500">
+                  {selectedCategory.description || 'Sin descripción'}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Permiso activo</p>
+                <p className="text-xs text-gray-500">Determina si el permiso está disponible para asignar</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+        </CardSection>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <XCircleIcon className="w-4 h-4" />
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isSaving || !name.trim()}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <SaveIcon className="w-4 h-4" />
+            {isSaving ? 'Guardando...' : isEditing ? 'Actualizar Permiso' : 'Crear Permiso'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default PermissionForm;
