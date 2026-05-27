@@ -6,7 +6,7 @@ import { searchDocentes } from '@/api/user';
 import { Course } from '@/models/course.entity';
 import SearchableSelect from '@/components/forms/searchable-select';
 import { useTabs } from '@/services/contexts/tabs-context';
-import { ArrowCircleLeftIcon, SaveAsIcon } from '@heroicons/react/outline';
+import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { useRouter } from 'next/router';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -107,10 +107,8 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
 
             if (isEditing) {
                 await updateCourse(resolvedCourseId, payload);
-                toast.success('Curso actualizado exitosamente');
             } else {
                 await createCourse(payload);
-                toast.success('Curso creado exitosamente');
             }
             setSuccess(isEditing ? 'Curso actualizado exitosamente' : 'Curso creado exitosamente');
             setTimeout(() => closeTabWithRefresh(currentTabId, refreshData), 1500);
@@ -221,15 +219,15 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
                         </div>
                     )}
 
-                    <div className="flex items-center justify-end gap-4 mt-6">
+                    <div className="flex items-center justify-end gap-3 pt-2">
                         <button onClick={handleCancel} type="button"
-                            className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-md px-4 py-2 text-sm font-medium text-gray-700">
-                            <ArrowCircleLeftIcon className="h-5 w-5" />
+                            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-400 rounded-lg hover:bg-gray-300 hover:border-gray-500 transition-colors">
+                            <XCircleIcon className="w-4 h-4" />
                             Cancelar
                         </button>
                         <button type="submit" disabled={isSubmitting}
-                            className={`inline-flex items-center gap-2 ${isSubmitting ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-500'} text-white rounded-md px-4 py-2 text-sm font-medium`}>
-                            <SaveAsIcon className="h-5 w-5" />
+                            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            <SaveIcon className="w-4 h-4" />
                             {isSubmitting ? 'Guardando...' : 'Guardar curso'}
                         </button>
                     </div>
@@ -237,14 +235,15 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
             )}
 
             {success && (
-                <div className="flex flex-col items-center justify-center py-8">
-                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                        <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="flex flex-col items-center justify-center py-12">
+                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
                             <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            <span className="text-lg font-medium text-gray-900">{success}</span>
                         </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+                        <p className="text-sm text-gray-500">{success}</p>
                     </div>
                 </div>
             )}

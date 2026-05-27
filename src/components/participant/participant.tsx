@@ -28,6 +28,7 @@ const ParticipantComponent: React.FC<Props> = ({ participantId }) => {
     const [level, setLevel] = useState('bronce');
     const [currentStreak, setCurrentStreak] = useState(0);
     const [isActive, setIsActive] = useState(true);
+    const [success, setSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -70,19 +71,35 @@ const ParticipantComponent: React.FC<Props> = ({ participantId }) => {
                     isActive,
                 };
                 await update(payload);
-                toast.success('Participante actualizado exitosamente');
+                setSuccess('Participante actualizado exitosamente');
             } else {
                 // Solo se pueden crear participantes desde la app mobile (auto-registro)
                 toast.error('Los participantes se crean automáticamente desde la app móvil');
             }
 
-            setTimeout(() => closeTabWithRefresh(currentTabId, true), 1000);
+            setTimeout(() => closeTabWithRefresh(currentTabId, true), 1500);
         } catch (error: any) {
             toast.error(error.message || 'Error al guardar el participante');
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    if (success) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12">
+                <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+                        <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+                    <p className="text-sm text-gray-500">{success}</p>
+                </div>
+            </div>
+        );
+    }
 
     const handleCancel = () => {
         closeTab(currentTabId);

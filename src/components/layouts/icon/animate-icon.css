@@ -1,18 +1,11 @@
-@keyframes neon-glow-slow {
-    0% {
-        filter: drop-shadow(0 0 10px #42e142);
-    }
-
-    50% {
-        filter: drop-shadow(0 0 20px #51a039);
-    }
-
-    100% {
-        filter: drop-shadow(0 0 10px #81ee60);
-    }
+/* Color tint + micro-scale en hover para los iconos del sidebar */
+.sidebar a:hover svg,
+.sidebar a.active svg {
+  color: var(--sidebar-accent, #4f46e5) !important;
+  transform: scale(1.1);
 }
 
-.animate-neon-glow-slow {
-    animation: neon-glow-slow 2s linear infinite;
-    /* Duración y ciclo */
+.sidebar a svg {
+  transition: color 0.25s ease, transform 0.25s ease;
 }
+

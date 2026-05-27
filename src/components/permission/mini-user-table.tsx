@@ -199,11 +199,14 @@ const MiniUserTable: React.FC<TableProps> = ({ data, userID, actions, setPermiss
       </div>
       <FeedbackModal
         isOpen={showModalFeedback}
+        initialType="improvement"
         onClose={() => {
           setShowModalFeedback(false);
           setIsLoading(false);
         }}
-        onSubmit={handleFeedbackSubmit}
+        onSubmit={async (data) => {
+          await handleFeedbackSubmit(data.description, data.type as 'improvement' | 'support');
+        }}
       />
       {isLoading && <div className="loading-container"><Loading /></div>}
     </div>

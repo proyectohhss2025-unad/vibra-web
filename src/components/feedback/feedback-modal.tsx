@@ -1,83 +1,97 @@
-import { ArrowCircleLeftIcon, PlusCircleIcon } from '@heroicons/react/solid';
 import React, { useState } from 'react';
-import WhatsAppChat from '../channel/whatsapp-chat';
-import ToggleSwitch from '../forms/toggleSwitch';
 
-interface Props {
+interface FeedbackModalProps {
     isOpen: boolean;
+    initialType: 'improvement' | 'support';
     onClose: () => void;
-    onSubmit: (message: string, type: string | 'improvement' | 'support') => void;
+    onSubmit: (data: { title: string; description: string; type: string }) => Promise<void>;
 }
 
-const FeedbackModal: React.FC<Props> = ({ isOpen, onClose, onSubmit }) => {
-    const [message, setMessage] = useState('');
-    const [type, setType] = useState('improvement');
+const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, initialType, onClose, onSubmit }) => {
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = () => {
-        onSubmit(message, type);
-        onClose();
+    if (!isOpen) return null;
+
+    const isImprovement = initialType === 'improvement';
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title.trim() || !description.trim()) return;
+
+        setIsSubmitting(true);
+        try {
+            await onSubmit({ title: title.trim(), description: description.trim(), type: initialType });
+            setTitle('');
+            setDescription('');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    //return <></>;
-
     return (
-        <div
-            className={`hidden`/*`fixed inset-0 flex items-center justify-center z-50 transition-opacity ${isOpen ? 'bg-opacity-75' : 'opacity-0'}`*/}
-            style={{ pointerEvents: isOpen ? 'auto' : 'none' }} >
-            <div
-                className="bg-white rounded-lg shadow-lg p-6 w-96 max-w-sm"
-                onClick={(e) => e.stopPropagation()} >
-                <h2 className="text-xl font-bold mb-4">Enviar comentarios</h2>
-                <textarea
-                    className="w-full resize-none border border-gray-300 rounded-md p-2 focus:outline-none focus:border-blue-500 text-sm"
-                    placeholder="Envia un comentario de tu solicitud de apoyo o la mejora que ves posible en la aplicación"
-                    value={message}
-                    rows={3}
-                    onChange={(e) => setMessage(e.target.value)}
-                />
-                <div className="mt-4 flex items-center space-x-4">
-                    <div className="flex items-center">
-                        <div className="mt-0 mb-1 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-12">
-                            <div className="sm:col-span-7 flex justify-end">
-                                <div className="flex sm:max-w-md mb-2">
-                                    <ToggleSwitch initialValue={type === 'improvement'} label="Mejora" handleChange={() => setType('improvement')} />
-                                </div>
-                            </div>
-                            <div className="sm:col-span-5 flex justify-end">
-                                <div className="flex sm:max-w-md mb-2">
-                                    <ToggleSwitch initialValue={type === 'support'} label="Apoyo" handleChange={() => setType('support')} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="flex items-center gap-2 px-6 py-4 border-b">
+                    <span className="text-xl">{isImprovement ? '✨' : '💬'}</span>
+                    <h2 className="text-lg font-semibold">
+                        {isImprovement ? 'Sugerir mejora' : 'Enviar apoyo'}
+                    </h2>
+                    <button onClick={onClose} className="ml-auto p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
-                <WhatsAppChat isIcon={true} />
-                <div className="mt-6 flex justify-end">
-                    <div className="relative mt-8 ml-2 pl-0">
-                        <div className="absolute inset-y-0 start-0 flex mt-0 items-center ps-3.5 pointer-events-none mr-6">
-                            <ArrowCircleLeftIcon style={{ float: 'left' }} name="success" className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className={`bg-gray-500 hover:bg-gray-600 rounded-md px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600`}
-                        >
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                            placeholder="¿Qué te gustaría sugerir?"
+                            required
+                            minLength={3}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows={4}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+                            placeholder="Cuéntanos más detalles..."
+                            required
+                            minLength={5}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 uppercase tracking-wider">Tipo:</span>
+                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${isImprovement ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'}`}>
+                            {isImprovement ? '✨ Mejora' : '💬 Apoyo'}
+                        </span>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button type="button" onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
                             Cancelar
                         </button>
-                    </div>
-                    <div className="relative mt-8 ml-2 pl-0">
-                        <div className="absolute inset-y-0 start-0 flex mt-0 items-center ps-3.5 pointer-events-none mr-6">
-                            <PlusCircleIcon style={{ float: 'left' }} name="success" className="h-6 w-8 text-white-500" color="#FFFFFF" />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            className={`bg-blue-500 hover:bg-blue-600 rounded-md px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600`}
-                        >
-                            Enviar
+                        <button type="submit" disabled={isSubmitting || !title.trim() || !description.trim()}
+                            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            {isSubmitting ? 'Enviando...' : '💾 Enviar'}
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
     );

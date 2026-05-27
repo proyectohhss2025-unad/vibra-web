@@ -8,8 +8,9 @@ import { User } from '@/models/user.entity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/registry/new-york/ui/card';
 import { useTabs } from '@/services/contexts/tabs-context';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import { ArrowCircleLeftIcon, PlusCircleIcon, SaveAsIcon, TrashIcon } from '@heroicons/react/outline';
+import { PlusCircleIcon, TrashIcon } from '@heroicons/react/outline';
 import { CheckCircleIcon } from '@heroicons/react/solid';
+import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import CardSection from '../ui/card-section';
@@ -669,12 +670,12 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                             <div className="flex items-center justify-end gap-4 mt-6 mb-4">
                                 <button onClick={handleCancel} type="button"
                                     className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 rounded-md px-4 py-2 text-sm font-semibold text-white">
-                                    <ArrowCircleLeftIcon className="h-5 w-5" />
-                                    Ir atrás
+                                    <XCircleIcon className="w-4 h-4" />
+                                    Cancelar
                                 </button>
-                                <button type="submit" disabled={!validateForm || isSubmitting}
-                                    className={`inline-flex items-center gap-2 ${validateForm && !isSubmitting ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-500'} rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm`}>
-                                    <SaveAsIcon className="h-5 w-5" />
+                                <button type="submit" disabled={isSubmitting}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <SaveIcon className="w-4 h-4" />
                                     {isSubmitting ? 'Guardando...' : 'Guardar actividad'}
                                 </button>
                             </div>

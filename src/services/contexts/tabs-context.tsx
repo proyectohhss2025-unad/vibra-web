@@ -59,16 +59,18 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({
         if (tabs.length == 1) {
             return;
         }
-        setTabs((prevTabs) => prevTabs.filter((tab) => tab.id !== id));
-        if (activeTab === id) {
-            const remainingTabs = tabs.filter((tab) => tab.id !== id);
-            setActiveTab(remainingTabs[remainingTabs.length - 1 || 0]?.id || null);
-        }
-        // Alternar refreshData para que el efecto en las listas detecte el cambio
-        if (withRefresh) {
-            setRefreshData((prev) => !prev);
-        }
-        window.scrollTo(0, 0);
+        // Usar requestAnimationFrame para evitar conflictos con el ciclo de render de Next.js
+        requestAnimationFrame(() => {
+            setTabs((prevTabs) => prevTabs.filter((tab) => tab.id !== id));
+            if (activeTab === id) {
+                const remaining = tabs.filter((tab) => tab.id !== id);
+                setActiveTab(remaining[remaining.length - 1 || 0]?.id || null);
+            }
+            if (withRefresh) {
+                setRefreshData((prev) => !prev);
+            }
+            window.scrollTo(0, 0);
+        });
     };
 
     return (

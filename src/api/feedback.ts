@@ -1,7 +1,7 @@
 import { config } from '@/config/config';
 import { Feedback } from '@/models/feedback.entity';
 import { User } from '@/models/user.entity';
-import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
+import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
 import logger from '../config/logger-dev';
 
@@ -162,6 +162,38 @@ export const softDeleteFeedback = async (feedbackId: string) => {
         return response.data.feedback;
     } catch (error) {
         logger.error('Error deleting feedback with error:', { error });
+        return null;
+    }
+}
+
+export const convertFeedbackToIdea = async (
+    id: string,
+    payload: {
+        title?: string;
+        description?: string;
+        priority?: string;
+        tags?: string[];
+    },
+): Promise<{ success: boolean; ideaId: string; idea: any } | null> => {
+    try {
+        const token = getSafeKeyFromStorage('token');
+        const response = await fetch(`${configAPI.baseURL}/api/feedback/${id}/convert-to-idea`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Error al convertir feedback');
+        }
+
+        return await response.json();
+    } catch (error) {
+        logger.error('Error converting feedback to idea:', error);
         return null;
     }
 }

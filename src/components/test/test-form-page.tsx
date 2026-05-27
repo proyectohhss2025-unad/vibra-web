@@ -6,6 +6,7 @@ import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
+import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import Loading from '@/components/layouts/loading/loading';
 import CardSection from '@/components/ui/card-section';
@@ -44,6 +45,7 @@ const TestFormPage: React.FC<TestFormPageProps> = ({ testId }) => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [success, setSuccess] = useState('');
   const [title, setTitle] = useState('');
   const [testIdField, setTestIdField] = useState('');
   const [description, setDescription] = useState('');
@@ -209,13 +211,12 @@ const TestFormPage: React.FC<TestFormPageProps> = ({ testId }) => {
 
       if (resolvedTestId) {
         await updateTest(resolvedTestId, payload);
-        toast.success('Test actualizado correctamente');
+        setSuccess('Test actualizado exitosamente');
       } else {
         await createTest(payload);
-        toast.success('Test creado correctamente');
+        setSuccess('Test creado exitosamente');
       }
-
-      closeTabWithRefresh(currentTabId, refreshData);
+      setTimeout(() => closeTabWithRefresh(currentTabId, refreshData), 1500);
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar el test');
     } finally {
@@ -228,6 +229,22 @@ const TestFormPage: React.FC<TestFormPageProps> = ({ testId }) => {
   };
 
   if (isLoading) return <Loading />;
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+          <p className="text-sm text-gray-500">{success}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="test-container container mx-auto px-4 py-8">
@@ -478,20 +495,18 @@ const TestFormPage: React.FC<TestFormPageProps> = ({ testId }) => {
         <button
           type="button"
           onClick={handleCancel}
-          className="px-6 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-400 rounded-lg hover:bg-gray-300 hover:border-gray-500 transition-colors"
         >
+          <XCircleIcon className="w-4 h-4" />
           Cancelar
         </button>
         <button
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className={`px-6 py-2 rounded-md font-medium text-white transition-colors ${
-            isSaving
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700'
-          }`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          <SaveIcon className="w-4 h-4" />
           {isSaving ? 'Guardando...' : 'Guardar'}
         </button>
       </div>

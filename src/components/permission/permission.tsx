@@ -213,7 +213,7 @@ const PermissionForm: React.FC<PermissionFormProps> = ({ permissionId }) => {
           <button
             type="button"
             onClick={handleCancel}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-400 rounded-lg hover:bg-gray-300 hover:border-gray-500 transition-colors"
           >
             <XCircleIcon className="w-4 h-4" />
             Cancelar

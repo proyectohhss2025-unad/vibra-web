@@ -46,6 +46,7 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
     const [optionsRole, setOptionsRole] = useState<any[]>([]);
     const [optionsCompany, setOptionsCompany] = useState<any[]>([]);
     const [optionsDocumentType, setOptionsDocumentType] = useState<any[]>([]);
+    const [success, setSuccess] = useState('');
     const [showModalPermissions, setShowModalPermissions] = useState(false);
     const [idRoleSelected, setIdRoleSelected] = useState('');
     const [idDocumentTypeSelected, setIdDocumentTypeSelected] = useState('');
@@ -165,8 +166,9 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
                 payload.address, payload.phoneNumber, payload.email, payload.username,
                 payload.role, payload.company, payload.gender, payload.birthDate
             );
-            toast.success(isEditing ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
-            setTimeout(() => closeTabWithRefresh(currentTabId, true), 1000);
+            const msg = isEditing ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente';
+            setSuccess(msg);
+            setTimeout(() => closeTabWithRefresh(currentTabId, true), 1500);
         } catch (error: any) {
             toast.error(error.message || 'Error al guardar el usuario');
         } finally {
@@ -182,6 +184,22 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
         const gen = generateUsername(name);
         setUsername(gen);
     };
+
+    if (success) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12">
+                <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+                        <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+                    <p className="text-sm text-gray-500">{success}</p>
+                </div>
+            </div>
+        );
+    }
 
     const renderOption = ({ label }: { label: string }) => label;
 

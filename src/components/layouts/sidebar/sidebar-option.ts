@@ -12,6 +12,7 @@ import PreTestDataPage from '@/components/preTest/data-page';
 import TestListPage from '@/components/test/test-list-page';
 import CourseListPage from '@/components/course/course-list-page';
 import ContactDataPage from '@/components/contact/data-page';
+import FeedbackDataPage from '@/components/feedback/feedback-data-page';
 //import DashboardReports from '@/components/reports/dashboard-reports';
 import RoleDataPage from '@/components/role/data-page';
 import UserDataPage from '@/components/user/data-page';
@@ -231,6 +232,18 @@ export const items = [
         icon: 'MailIcon',
         permissionID: '11',
         component: ContactDataPage,
+        isActive: true,
+      },
+      {
+        _id: '43',
+        name: 'feedback',
+        href: '/feedback/feedback-table',
+        label: 'Feedback',
+        color: '#EAEAEA',
+        description: 'Gestión de feedback y conversión a ideas',
+        icon: 'AnnotationIcon',
+        permissionID: '11',
+        component: FeedbackDataPage,
         isActive: true,
       },
       {

@@ -217,11 +217,14 @@ const MiniTemplateTable: React.FC<TableProps> = ({ permissions_, template_, acti
       </div>
       <FeedbackModal
         isOpen={showModalFeedback}
+        initialType="improvement"
         onClose={() => {
           setShowModalFeedback(false);
           setIsLoading(false);
         }}
-        onSubmit={handleFeedbackSubmit}
+        onSubmit={async (data) => {
+          await handleFeedbackSubmit(data.description, data.type as 'improvement' | 'support');
+        }}
       />
       {isLoading && <div className="loading-container"><Loading /></div>}
     </div>

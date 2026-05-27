@@ -3,7 +3,8 @@
 import { create, update, getById, CreateEmotionPayload } from '@/api/emotion';
 import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
-import { ArrowCircleLeftIcon, PlusCircleIcon } from '@heroicons/react/outline';
+import { PlusCircleIcon } from '@heroicons/react/outline';
+import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { CheckCircleIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
@@ -231,13 +232,15 @@ const EmotionComponent: React.FC<EmotionComponentProps> = ({ emotionId }) => {
                     </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-4">
+                <div className="flex items-center justify-end gap-3 pt-2">
                     <button type="button" onClick={handleCancel}
-                        className="bg-gray-300 hover:bg-gray-400 rounded-md px-4 py-2 text-sm font-semibold text-gray-700">
+                        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-800 bg-gray-100 border border-gray-400 rounded-lg hover:bg-gray-300 hover:border-gray-500 transition-colors">
+                        <XCircleIcon className="w-4 h-4" />
                         Cancelar
                     </button>
                     <button type="submit" disabled={isSubmitting}
-                        className={`${isSubmitting ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm`}>
+                        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <SaveIcon className="w-4 h-4" />
                         {isSubmitting ? 'Guardando...' : 'Guardar'}
                     </button>
                 </div>

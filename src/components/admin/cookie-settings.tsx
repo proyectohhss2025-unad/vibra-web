@@ -1,6 +1,6 @@
 "use client"
 
-import { deleteAllDocumentsByTest, startGenerateBackups, startGenerateNotification } from "@/api/admin"
+import { deleteAllDocumentsByTest, getIdeasStatus, startGenerateBackups, startGenerateNotification } from "@/api/admin"
 import { getAllFlags, setChangeStatusConfig } from "@/api/config"
 import { auditLogAction } from "@/api/log"
 import { Config } from "@/models/config.entity"
@@ -22,6 +22,7 @@ import { useTabs } from "@/services/contexts/tabs-context"
 import { getSafeKeyFromStorage } from "@/utils/safe-token-storage"
 import { ArrowCircleLeftIcon, BackspaceIcon, InformationCircleIcon, SaveAsIcon } from "@heroicons/react/outline"
 import { ArrowBigRightDashIcon, BellElectricIcon, CheckIcon, DoorClosedIcon, FolderSyncIcon, RouteOffIcon } from "lucide-react"
+import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react"
 import ToggleSwitch from "../forms/toggleSwitch"
 import Loading from "../layouts/loading/loading"
@@ -36,6 +37,13 @@ import CurrentDateTime from "../utils/current-datetime"
 export function AdminCookieSettings() {
   const { clientIp } = useClientIp();
   const { user } = useContext(AuthContext);
+  const router = useRouter();
+  const [ideasStatus, setIdeasStatus] = useState<{
+    ideasPath: string;
+    fileExists: boolean;
+    totalIdeas: number;
+    lastModified: string | null;
+  } | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [showModalNotification, setShowModalNotification] = useState(false);
@@ -68,6 +76,15 @@ export function AdminCookieSettings() {
       fetchLogs();
     }
   }, [dataFlags]);
+
+  // Load ideas.json status
+  useEffect(() => {
+    const fetchIdeasStatus = async () => {
+      const status = await getIdeasStatus();
+      setIdeasStatus(status);
+    };
+    fetchIdeasStatus();
+  }, []);
 
   const handleChangeSoftDelete = async () => {
     try {
@@ -381,6 +398,84 @@ export function AdminCookieSettings() {
                 </div>
               </div>
             </CardFooter>
+          </Card>
+          {/* Ideas status card */}
+          <Card className="col-span-12 bg-white rounded-md px-10">
+            <CardHeader>
+              <CardTitle className="text-md font-semibold mt-6">
+                <span className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  Gestión de Ideas del Sistema
+                </span>
+              </CardTitle>
+              <CardDescription>Backlog de ideas del proyecto Vibra</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ideasStatus ? (
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                    <span className="text-lg">📂</span>
+                    <div>
+                      <p className="text-xs text-gray-500">Ruta del archivo</p>
+                      <p className="text-sm font-mono text-gray-700 truncate max-w-[200px]" title={ideasStatus.ideasPath}>
+                        {ideasStatus.ideasPath}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                    <span className="text-lg">{ideasStatus.fileExists ? '✅' : '❌'}</span>
+                    <div>
+                      <p className="text-xs text-gray-500">Estado</p>
+                      <p className={`text-sm font-medium ${ideasStatus.fileExists ? 'text-green-600' : 'text-red-600'}`}>
+                        {ideasStatus.fileExists ? 'Archivo disponible' : 'No encontrado'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                    <span className="text-lg">📝</span>
+                    <div>
+                      <p className="text-xs text-gray-500">Total ideas</p>
+                      <p className="text-sm font-bold text-gray-700">{ideasStatus.totalIdeas}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                    <span className="text-lg">🕐</span>
+                    <div>
+                      <p className="text-xs text-gray-500">Última modificación</p>
+                      <p className="text-sm text-gray-700">
+                        {ideasStatus.lastModified
+                          ? new Date(ideasStatus.lastModified).toLocaleDateString('es-CO', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Cargando información del backlog...</p>
+              )}
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push('/feedback/feedback-table');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Ir a Feedback
+                </button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       </TabsContent>

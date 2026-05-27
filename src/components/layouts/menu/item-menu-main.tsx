@@ -68,6 +68,9 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
         );
     };
 
+    // Detectar si este item corresponde a la ruta activa
+    const isActive = item.href !== '#' && router.pathname === item.href;
+
     const itemMenuProps: any = {
         color: item.color,
         name: item.name,
@@ -79,7 +82,7 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
     if (isAuthenticated) {
         return (
             <li key={`li_${key_}`} className={`text-gray-600 hover:text-white`}>
-                <Link className={`${isCollapsed ? 'h-10 py-1' : 'flex items-center rounded border border-gray-400 mx-3 mt-0 hover:bg-gray-100'}`}
+                <Link className={`${isCollapsed ? 'h-10 py-1' : 'flex items-center rounded border border-gray-400 mx-3 mt-0'}${isActive ? ' active' : ''}`}
                     href={item.children?.length == 0 ? '#' : '#'}
                     replace={true}
                     scroll={false}
@@ -110,11 +113,11 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
                                 icon: child.icon
                             };
                             return (
-                                <li className={`text-sm mt-0 ${selectedItem === child._id ? 'bg-transparent' : 'bg-transparent'} mx-0 ${isCollapsed ? 'py-2 mt-2 ' : 'py-0'}`}
+                                <li className={`text-sm mt-0 mx-0 ${isCollapsed ? 'py-2 mt-2 ' : 'py-0'}`}
                                     key={`child_${child._id}${item._id}`}
                                     data-tooltip-id="my-tooltip-l"
                                     data-tooltip-content={child.description}>
-                                    <a href="#" style={{ marginLeft: isCollapsed ? '-10px' : '0px', marginRight: isCollapsed ? '-4px' : '0px' }} className={`${isCollapsed ? 'h-7 mt-0 ml-0 mr-0' : 'rounded border border-gray-400 hover:border-gray-600 pb-0 mx-0 flex items-center h-9'}`} onClick={() => {
+                                    <a href="#" style={{ marginLeft: isCollapsed ? '-10px' : '0px', marginRight: isCollapsed ? '-4px' : '0px' }} className={`${isCollapsed ? 'h-7 mt-0 ml-0 mr-0' : 'rounded border border-gray-400 pb-0 mx-0 flex items-center h-9'}${selectedItem === child._id ? ' active' : ''}`} onClick={() => {
                                         handleItemChildClick(child);
                                     }}><div style={{ paddingLeft: isCollapsed ? '-10px' : '0px' }} className={`${isCollapsed ? 'h-3 pl-0 ml-0' : 'h-full'} mt-0 flex items-center`}>
                                             <AnimatedIcon icon={child.icon} itemMenuChildProps={itemMenuChildProps} />

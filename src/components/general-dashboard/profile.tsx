@@ -4,6 +4,8 @@ import { AuthContext } from '@/services/auth';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { EditProfileModal } from '@/components/profile/EditProfileModal';
+import ProfileParticipantSection from '@/components/profile/ProfileParticipantSection';
 
 const Profile: React.FC = () => {
   const router = useRouter();
@@ -23,10 +25,16 @@ const Profile: React.FC = () => {
   const companyName = user?.company?.name ?? user?.companyName ?? '-';
   const documentNumber = user?.documentNumber ?? user?.document ?? '-';
 
+  const handleRefreshUser = () => {
+    const refreshed = JSON.parse(getSafeKeyObjectFromStorage('user') ?? '{}');
+    setUser(refreshed);
+  };
+
   return (
     <div className="w-full h-full px-4">
       <div className="flex items-center justify-between mt-6">
         <h2 className="text-3xl font-bold tracking-tight">Perfil</h2>
+        <EditProfileModal user={user} onUpdate={handleRefreshUser} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 mt-6 lg:grid-cols-3">
@@ -73,6 +81,8 @@ const Profile: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      <ProfileParticipantSection userId={user?._id} />
     </div>
   );
 };

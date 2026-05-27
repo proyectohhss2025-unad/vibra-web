@@ -101,7 +101,7 @@ const ConfigComponent = () => {
             const nameFormat = configName.replaceAll(' ', '-');
             const configResponse = await createConfig(configID, nameFormat, configFlag, updatedObjectAllowedUser.myArray, updatedObjectDisallowedUser.myArray, configDescription, user.name);
             if (configResponse) {
-                setSuccess('Configuration created successfully');
+                setSuccess('Configuración guardada exitosamente');
                 setConfig(configClean);
             } else {
                 setError('Error creating configuration');

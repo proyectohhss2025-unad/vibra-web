@@ -1,5 +1,6 @@
 import AuthorInfo from '@/components/author-info';
 import ActiveUsers from '@/components/user/active-user';
+import FloatingFeedbackBtn from '@/components/ui/floating-feedback-btn';
 import { AuthContext, ResolvedPermissions } from '@/services/auth';
 import { useDevice } from '@/services/contexts/device-context';
 import { FULL_NAME } from '@/utils/constants';
@@ -143,6 +144,9 @@ const Sidebar = () => {
                     {<AuthorInfo isCollapsed={!isCollapsed} />}
                 </div>}
             </div>}
+            {!isMobile && (
+                <FloatingFeedbackBtn />
+            )}
             {!isMobile && <div className="gap-x-1">
                 <div id="sidebar" className={`sidebar ${isCollapsed ? 'w-20 ml-0' : 'w-[240px]'} transition-all duration-300 ease-in-out scrollbar-div`} style={{ height: "100vh", overflowY: "auto", overflowX: 'auto' }} >
                     <div className={`items-center justify-between ${isCollapsed ? 'px-2' : 'px-2'} mt-2`} >
