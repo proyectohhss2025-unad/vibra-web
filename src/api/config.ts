@@ -2,18 +2,15 @@ import { config } from '@/config/config';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import api from '@/api/axios-instance';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 const configAPI = {
     baseURL: config[environment].apiDashboard,
 };
 const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
 
-export const createConfig = async (_id: string, name: string, flag: boolean, allowedUsers: any, disallowedUsers: any, description: string, createdBy: string) => {
+export const createConfig = async (name: string, flag: boolean, allowedUsers: string[], disallowedUsers: string[], description: string, createdBy: string) => {
     try {
-        const response = await api.post(`${configAPI.baseURL}`, {
-            _id,
+        const response = await api.post('/api/config', {
             name,
             flag,
             allowedUsers,
@@ -23,9 +20,28 @@ export const createConfig = async (_id: string, name: string, flag: boolean, all
             editedBy: createdBy
         });
 
-        return response.data.config;
+        return response.data?.config ?? response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
+        return null;
+    }
+}
+
+export const updateConfig = async (id: string, name: string, flag: boolean, allowedUsers: string[], disallowedUsers: string[], description: string, editedBy: string) => {
+    try {
+        const response = await api.patch('/api/config', {
+            _id: id,
+            name,
+            flag,
+            allowedUsers,
+            disallowedUsers,
+            description,
+            editedBy
+        });
+
+        return response.data?.config ?? response.data;
+    } catch (error) {
+        console.error('Error:', error);
         return null;
     }
 }
@@ -41,7 +57,7 @@ export const getConfigById = async (configId: string) => {
         });
         return response.data?.config;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -60,7 +76,7 @@ export const getConfigByName = async (name: string) => {
 
         return response.data.config;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -73,7 +89,7 @@ export const hasAccessToConfig = async (configId: string, userId: string) => {
         });
         return response.data.allowed;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -84,7 +100,7 @@ export const searchByQuery = async (query: string) => {
 
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -94,7 +110,7 @@ export const getAll = async (currentPage: number, pageSize: number) => {
         const response = await api.get(`${configAPI.baseURL}/api/config/api/user/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -104,7 +120,7 @@ export const getAllFlags = async (currentPage: number, pageSize: number) => {
         const response = await api.get(`${configAPI.baseURL}/api/config/flags?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -119,7 +135,7 @@ export const setActive = async (_id: string, active: boolean, createdBy: string)
 
         return response.data.config;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -134,7 +150,7 @@ export const setChangeStatusConfig = async (_id: string, active: boolean) => {
 
         return response.data.config;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }

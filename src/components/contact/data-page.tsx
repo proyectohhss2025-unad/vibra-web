@@ -3,14 +3,11 @@
 import { getAll, update, getStats, UpdateContactPayload, ContactStats } from '@/api/contact';
 import { Contact } from '@/models/contact.entity';
 import { AuthContext } from '@/services/auth';
-import { RefreshIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import Search from '../search/search';
-import Pagination from '../ui/table/pagination';
-import CurrentDateTime from '../utils/current-datetime';
-import '../test/test.css';
+import { Eye } from 'lucide-react';
+import ListPageLayout from '@/components/ui/list-page-layout';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
     unread: { label: 'No leído', color: 'text-red-600 bg-red-50' },
@@ -112,130 +109,79 @@ const ContactDataPage: React.FC = () => {
 
     return (
         <>
-            <div className="hidden flex-col md:flex w-full mt-0">
-                <div className="hidden flex-col w-full md:flex mt-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-3xl font-bold tracking-tight ml-3">Gestión de Contacto</h2>
-                        <div className="flex items-center space-x-2">
-                            <div className="bg-white rounded-md px-2 pl-2 mb-0 pb-1">
-                                <CurrentDateTime />
-                            </div>
-                        </div>
+            {/* Stats Bar */}
+            <div className="grid grid-cols-5 gap-3 mt-4 px-1">
+                {[
+                    { label: 'Total', value: stats.total, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                    { label: 'No leídos', value: stats.unread, color: 'bg-red-50 text-red-700 border-red-200' },
+                    { label: 'En proceso', value: stats.in_progress, color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                    { label: 'Resueltos', value: stats.resolved, color: 'bg-green-50 text-green-700 border-green-200' },
+                    { label: 'Spam', value: stats.spam, color: 'bg-gray-50 text-gray-700 border-gray-200' },
+                ].map((stat) => (
+                    <div key={stat.label} className={`rounded-lg border p-3 text-center ${stat.color}`}>
+                        <p className="text-2xl font-bold">{stat.value}</p>
+                        <p className="text-xs mt-0.5">{stat.label}</p>
                     </div>
-                </div>
-
-                {/* Stats Bar */}
-                <div className="grid grid-cols-5 gap-3 mt-4 px-1">
-                    {[
-                        { label: 'Total', value: stats.total, color: 'bg-blue-50 text-blue-700 border-blue-200' },
-                        { label: 'No leídos', value: stats.unread, color: 'bg-red-50 text-red-700 border-red-200' },
-                        { label: 'En proceso', value: stats.in_progress, color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-                        { label: 'Resueltos', value: stats.resolved, color: 'bg-green-50 text-green-700 border-green-200' },
-                        { label: 'Spam', value: stats.spam, color: 'bg-gray-50 text-gray-700 border-gray-200' },
-                    ].map((stat) => (
-                        <div key={stat.label} className={`rounded-lg border p-3 text-center ${stat.color}`}>
-                            <p className="text-2xl font-bold">{stat.value}</p>
-                            <p className="text-xs mt-0.5">{stat.label}</p>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="bg-white rounded-md w-full mt-3 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 className="text-xl font-semibold">Mensajes de Contacto</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Gestione los mensajes enviados desde la landing page.
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            {/* Status filter */}
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="all">Todos los estados</option>
-                                <option value="unread">No leídos</option>
-                                <option value="read">Leídos</option>
-                                <option value="in_progress">En proceso</option>
-                                <option value="resolved">Resueltos</option>
-                                <option value="spam">Spam</option>
-                            </select>
-                            <Search
-                                isOpen={false}
-                                onClose={() => { }}
-                                setData={(results: any) => setData(results)}
-                                entity="contact"
-                                setIsLoading={setIsLoading}
-                            >
-                                <RefreshIcon
-                                    className="h-7 w-7 text-blue-600 cursor-pointer hover:text-green-500"
-                                    onClick={() => { setCurrentPage(1); loadData(); loadStats(); }}
-                                />
-                            </Search>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="uppercase tracking-wider border-b-2">
-                                <tr>
-                                    <th className="px-3 py-2">Fecha</th>
-                                    <th className="px-3 py-2">Nombre</th>
-                                    <th className="px-3 py-2">Email</th>
-                                    <th className="px-3 py-2">Asunto</th>
-                                    <th className="px-3 py-2">Estado</th>
-                                    <th className="px-3 py-2">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-8 text-gray-500">
-                                            {isLoading ? 'Cargando...' : 'No hay mensajes de contacto'}
-                                        </td>
-                                    </tr>
-                                )}
-                                {data.map((contact) => {
-                                    const statusInfo = statusConfig[contact.status] || statusConfig.unread;
-                                    return (
-                                        <tr key={contact._id} className="hover:bg-blue-50 border-b cursor-pointer"
-                                            onClick={() => openDetail(contact)}>
-                                            <td className="px-3 py-2 text-xs text-gray-500">{formatDate(contact.createdAt)}</td>
-                                            <td className="px-3 py-2 font-medium">{contact.name}</td>
-                                            <td className="px-3 py-2 text-gray-600">{contact.email}</td>
-                                            <td className="px-3 py-2 max-w-[200px] truncate">{contact.subject}</td>
-                                            <td className="px-3 py-2">
-                                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                                                    {statusInfo.label}
-                                                </span>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); openDetail(contact); }}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                                    title="Ver detalle"
-                                                >
-                                                    👁️
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <Pagination
-                        currentPage={currentPage}
-                        pageSize={pageSize}
-                        totalItems={total}
-                        onPageChange={setCurrentPage}
-                        setPageSize={setPageSize}
-                    />
-                </div>
+                ))}
             </div>
+
+            <ListPageLayout
+                title="Gestión de Contacto"
+                subtitle="Gestione los mensajes enviados desde la landing page."
+                data={data}
+                total={total}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                isLoading={isLoading}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                onRefresh={() => { setCurrentPage(1); loadData(); loadStats(); }}
+                searchEntity="contact"
+                onSearchData={(results) => setData(results as Contact[])}
+                onSearchLoading={setIsLoading}
+                filter={
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                        className="rounded-md border border-gray-300 px-3 py-[7px] text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
+                    >
+                        <option value="all">Todos los estados</option>
+                        <option value="unread">No leídos</option>
+                        <option value="read">Leídos</option>
+                        <option value="in_progress">En proceso</option>
+                        <option value="resolved">Resueltos</option>
+                        <option value="spam">Spam</option>
+                    </select>
+                }
+                emptyMessage="No hay mensajes de contacto"
+                columns={[
+                    { key: 'createdAt', label: 'Fecha', render: (c: Contact) => <span className="text-xs text-gray-500">{formatDate(c.createdAt)}</span> },
+                    { key: 'name', label: 'Nombre', render: (c) => c.name, className: 'font-medium' },
+                    { key: 'email', label: 'Email', render: (c) => <span className="text-gray-600">{c.email}</span> },
+                    { key: 'subject', label: 'Asunto', render: (c) => <span className="max-w-[200px] truncate block">{c.subject}</span> },
+                    {
+                        key: 'status',
+                        label: 'Estado',
+                        render: (c) => {
+                            const info = statusConfig[c.status] || statusConfig.unread;
+                            return (
+                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${info.color}`}>
+                                    {info.label}
+                                </span>
+                            );
+                        },
+                    },
+                ]}
+                rowKey={(c) => c._id!}
+                actions={[
+                    {
+                        icon: <Eye className="w-4 h-4" />,
+                        tooltip: 'Ver detalle',
+                        onClick: openDetail,
+                        color: 'text-blue-600',
+                    },
+                ]}
+            />
 
             {/* Detail Modal */}
             {detailModal.show && detailModal.contact && (
@@ -280,19 +226,23 @@ const ContactDataPage: React.FC = () => {
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Estado</p>
                                     <div className="flex flex-wrap gap-2">
-                                        {Object.entries(statusConfig).map(([key, config]) => (
-                                            <button
-                                                key={key}
-                                                onClick={() => setEditStatus(key)}
-                                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                                                    editStatus === key
-                                                        ? `${config.color} border-current ring-2 ring-offset-1`
-                                                        : 'text-gray-500 border-gray-200 hover:border-gray-300'
-                                                }`}
-                                            >
-                                                {config.label}
-                                            </button>
-                                        ))}
+                                        {Object.entries(statusConfig).map(([key, config]) => {
+                                            const [textColor, bgColor] = config.color.split(' ');
+                                            const isSelected = editStatus === key;
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => setEditStatus(key)}
+                                                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 ${
+                                                        isSelected
+                                                            ? `${bgColor} ${textColor} border-transparent shadow-sm ring-2 ring-blue-400/40 ring-offset-1`
+                                                            : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-100 hover:border-gray-300 hover:text-gray-700'
+                                                    }`}
+                                                >
+                                                    {config.label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                                 <div>

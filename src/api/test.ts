@@ -1,14 +1,10 @@
 /**
  * API para gestionar los Tests (definiciones)
+ * Usa api (axios con JWT interceptor) para todas las peticiones.
  */
 
 import { Test, TestPaginatedResponse } from '@/models/test.entity';
-import { config } from '@/config/config';
-
-const environment = process.env.NODE_ENV || 'development';
-const configAPI = {
-  baseURL: config[environment].apiDashboard,
-};
+import api from '@/api/axios-instance';
 
 /**
  * Obtiene todos los tests con paginación y filtros
@@ -20,17 +16,14 @@ export const getAll = async (
   category?: string,
 ): Promise<TestPaginatedResponse> => {
   try {
-    const params = new URLSearchParams();
-    params.append('page', page.toString());
-    params.append('limit', limit.toString());
-    if (search) params.append('search', search);
-    if (category) params.append('category', category);
+    const params: Record<string, string> = { page: page.toString(), limit: limit.toString() };
+    if (search) params.search = search;
+    if (category) params.category = category;
 
-    const response = await fetch(`${configAPI.baseURL}/api/tests?${params}`);
-    const data = await response.json();
+    const res = await api.get('/api/tests', { params });
     return {
-      data: data.data || [],
-      total: data.total || 0,
+      data: res.data?.data || [],
+      total: res.data?.total || 0,
     };
   } catch (error) {
     console.error('Error al obtener tests:', error);
@@ -43,8 +36,8 @@ export const getAll = async (
  */
 export const getTestById = async (id: string): Promise<Test | null> => {
   try {
-    const response = await fetch(`${configAPI.baseURL}/api/tests/${id}`);
-    return await response.json();
+    const res = await api.get(`/api/tests/${id}`);
+    return res.data;
   } catch (error) {
     console.error('Error al obtener test por ID:', error);
     throw error;
@@ -56,19 +49,11 @@ export const getTestById = async (id: string): Promise<Test | null> => {
  */
 export const createTest = async (test: Omit<Test, '_id' | 'createdAt' | 'updatedAt'>): Promise<Test> => {
   try {
-    const response = await fetch(`${configAPI.baseURL}/api/tests`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(test),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Error al crear test');
-    }
-    return await response.json();
-  } catch (error) {
+    const res = await api.post('/api/tests', test);
+    return res.data;
+  } catch (error: any) {
     console.error('Error al crear test:', error);
-    throw error;
+    throw new Error(error?.response?.data?.message || 'Error al crear test');
   }
 };
 
@@ -77,19 +62,11 @@ export const createTest = async (test: Omit<Test, '_id' | 'createdAt' | 'updated
  */
 export const updateTest = async (id: string, test: Partial<Test>): Promise<Test> => {
   try {
-    const response = await fetch(`${configAPI.baseURL}/api/tests/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(test),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Error al actualizar test');
-    }
-    return await response.json();
-  } catch (error) {
+    const res = await api.put(`/api/tests/${id}`, test);
+    return res.data;
+  } catch (error: any) {
     console.error('Error al actualizar test:', error);
-    throw error;
+    throw new Error(error?.response?.data?.message || 'Error al actualizar test');
   }
 };
 
@@ -98,16 +75,10 @@ export const updateTest = async (id: string, test: Partial<Test>): Promise<Test>
  */
 export const deleteTest = async (id: string): Promise<void> => {
   try {
-    const response = await fetch(`${configAPI.baseURL}/api/tests/${id}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Error al eliminar test');
-    }
-  } catch (error) {
+    await api.delete(`/api/tests/${id}`);
+  } catch (error: any) {
     console.error('Error al eliminar test:', error);
-    throw error;
+    throw new Error(error?.response?.data?.message || 'Error al eliminar test');
   }
 };
 
@@ -116,16 +87,10 @@ export const deleteTest = async (id: string): Promise<void> => {
  */
 export const toggleTestStatus = async (id: string): Promise<Test> => {
   try {
-    const response = await fetch(`${configAPI.baseURL}/api/tests/${id}/status`, {
-      method: 'PATCH',
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Error al cambiar estado del test');
-    }
-    return await response.json();
-  } catch (error) {
+    const res = await api.patch(`/api/tests/${id}/status`);
+    return res.data;
+  } catch (error: any) {
     console.error('Error al cambiar estado del test:', error);
-    throw error;
+    throw new Error(error?.response?.data?.message || 'Error al cambiar estado del test');
   }
 };

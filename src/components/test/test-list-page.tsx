@@ -2,32 +2,25 @@
 
 import { getAll, toggleTestStatus, deleteTest } from '@/api/test';
 import { Test } from '@/models/test.entity';
-import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
-import { PlusCircleIcon, RefreshIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import '../../../app/globals.css';
-import ModalConfirm from '../layouts/modal/modal-confirm';
-import Search from '../search/search';
-import Pagination from '../ui/table/pagination';
-import CurrentDateTime from '../utils/current-datetime';
+import ListPageLayout from '@/components/ui/list-page-layout';
 import TestFormPage from './test-form-page';
 import TestResponsesPage from './test-responses-page';
+import { Edit, Eye, Play, Pause, Trash2 } from 'lucide-react';
 import './test.css';
 
 const TestListPage: React.FC = () => {
-  const { token } = useContext(AuthContext);
   const router = useRouter();
-  const { openTab, closeTab } = useTabs();
+  const { openTab, refreshData } = useTabs();
 
   const [data, setData] = useState<Test[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; test: Test | null }>({
     show: false,
     test: null,
@@ -36,7 +29,7 @@ const TestListPage: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const response = await getAll(currentPage, pageSize, searchTerm || undefined);
+      const response = await getAll(currentPage, pageSize);
       setData(response.data);
       setTotal(response.total);
     } catch (error) {
@@ -50,26 +43,14 @@ const TestListPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [currentPage, pageSize]);
+  useEffect(() => { loadData(); }, [refreshData]);
 
+  // Recargar cuando se cierra el formulario con refresh
   useEffect(() => {
-    if (!token) {
-      router.push('/layout');
+    if (refreshData) {
+      loadData();
     }
-  }, [token, router]);
-
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    setCurrentPage(1);
-    // Recargar con el término de búsqueda
-    getAll(1, pageSize, term || undefined).then((response) => {
-      setData(response.data);
-      setTotal(response.total);
-    });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-  };
+  }, [refreshData]);
 
   const handleNew = () => {
     openTab('/Test/new', 'Nuevo Test', <TestFormPage />);
@@ -109,162 +90,126 @@ const TestListPage: React.FC = () => {
     }
   };
 
+  const difficultyDots = (difficulty: number = 0) => (
+    <div className="flex items-center space-x-1">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span
+          key={i}
+          className={`w-2.5 h-2.5 rounded-full ${i < difficulty ? 'bg-amber-400' : 'bg-gray-200'}`}
+        />
+      ))}
+    </div>
+  );
+
   return (
-    <>
-      <div className="hidden flex-col md:flex w-full mt-0">
-        <div className="hidden flex-col w-full md:flex mt-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-bold tracking-tight ml-3">Gestión de Tests</h2>
-            <div className="flex items-center space-x-2">
-              <div className="bg-white rounded-md px-2 pl-2 mb-0 pb-1">
-                <CurrentDateTime />
-              </div>
+    <ListPageLayout
+      title="Gestión de Tests"
+      subtitle="Gestione los tests, configure preguntas y revise respuestas."
+      data={data}
+      total={total}
+      currentPage={currentPage}
+      pageSize={pageSize}
+      isLoading={isLoading}
+      onPageChange={setCurrentPage}
+      onPageSizeChange={setPageSize}
+      onRefresh={() => { setCurrentPage(1); loadData(); }}
+      onAdd={handleNew}
+      addLabel="Agregar Test"
+      searchEntity="tests"
+      onSearchData={(results) => setData(results as Test[])}
+      onSearchLoading={setIsLoading}
+      emptyMessage="No hay tests registrados"
+      columns={[
+        { key: 'testId', label: 'ID', render: (t: Test) => <span className="font-mono text-xs">{t.testId}</span>, className: 'w-20' },
+        { key: 'title', label: 'Título', render: (t) => t.title, className: 'font-medium min-w-[280px] w-96' },
+        { key: 'category', label: 'Categoría', render: (t) => t.category || '-', className: 'w-28' },
+        { key: 'difficulty', label: 'Dificultad', render: (t) => difficultyDots(t.difficulty), className: 'w-28' },
+        {
+          key: 'status',
+          label: 'Estado',
+          render: (t) => (
+            <span className={t.isActive ? 'badge-active' : 'badge-inactive'}>
+              {t.isActive ? 'Activo' : 'Inactivo'}
+            </span>
+          ),
+          className: 'w-24 text-center',
+        },
+        {
+          key: 'visualization',
+          label: 'Momento',
+          render: (t) => (
+            <div className="flex gap-1">
+              {t.showAtStart && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                  Inicial
+                </span>
+              )}
+              {t.showAtEnd && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
+                  Final
+                </span>
+              )}
+              {!t.showAtStart && !t.showAtEnd && (
+                <span className="text-xs text-gray-400">—</span>
+              )}
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-md w-full mt-3 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xl font-semibold">Lista de Tests</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Gestione los tests, configure preguntas y revise respuestas.
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Search
-                isOpen={false}
-                onClose={() => { }}
-                setData={(results: any) => setData(results)}
-                entity="test"
-                setIsLoading={setIsLoading}
-              >
-                <RefreshIcon
-                  className="h-7 w-7 text-blue-600 cursor-pointer hover:text-green-500"
-                  onClick={() => {
-                    setCurrentPage(1);
-                    loadData();
-                  }}
-                />
-              </Search>
-              <button
-                onClick={handleNew}
-                className="flex w-60 rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500"
-              >
-                <PlusCircleIcon className="h-5 w-8 text-white" />
-                Agregar Test
-              </button>
-            </div>
-          </div>
-
-          {/* Tabla */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="uppercase tracking-wider border-b-2">
-                <tr>
-                  <th className="px-3 py-2">Test ID</th>
-                  <th className="px-3 py-2">Título</th>
-                  <th className="px-3 py-2">Categoría</th>
-                  <th className="px-3 py-2">Dificultad</th>
-                  <th className="px-3 py-2">Estado</th>
-                  <th className="px-3 py-2">Preguntas</th>
-                  <th className="px-3 py-2">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-500">
-                      {isLoading ? 'Cargando...' : 'No hay tests registrados'}
-                    </td>
-                  </tr>
-                )}
-                {data.map((test) => (
-                  <tr key={test._id} className="hover:bg-blue-50 border-b">
-                    <td className="px-3 py-2 font-mono text-xs">{test.testId}</td>
-                    <td className="px-3 py-2 font-medium">{test.title}</td>
-                    <td className="px-3 py-2">{test.category || '-'}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center space-x-1">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <span
-                            key={i}
-                            className={`w-2.5 h-2.5 rounded-full ${i < test.difficulty ? 'bg-amber-400' : 'bg-gray-200'
-                              }`}
-                          />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className={test.isActive ? 'badge-active' : 'badge-inactive'}>
-                        {test.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {test.questions?.length || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(test)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          title="Editar"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => handleViewResponses(test)}
-                          className="text-green-600 hover:text-green-800 text-sm font-medium"
-                          title="Ver respuestas"
-                        >
-                          👁️
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(test)}
-                          className={`text-sm font-medium ${test.isActive ? 'text-orange-500' : 'text-green-500'
-                            } hover:text-opacity-80`}
-                          title={test.isActive ? 'Desactivar' : 'Activar'}
-                        >
-                          {test.isActive ? '⏸' : '▶️'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(test)}
-                          className="text-red-500 hover:text-red-700 text-sm font-medium"
-                          title="Eliminar"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            currentPage={currentPage}
-            pageSize={pageSize}
-            totalItems={total}
-            onPageChange={handlePageChange}
-            setPageSize={setPageSize}
-          />
-        </div>
-      </div>
-
-      {/* Modal de confirmación para eliminar */}
-      <ModalConfirm
-        isOpen={deleteConfirm.show}
-        onClose={() => setDeleteConfirm({ show: false, test: null })}
-        onConfirm={handleDeleteConfirm}
-        title="Eliminar Test"
-        message={`¿Está seguro de eliminar el test "${deleteConfirm.test?.title}"? Esta acción no se puede deshacer.`}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-      />
-    </>
+          ),
+          className: 'w-28',
+        },
+        {
+          key: 'questions',
+          label: 'P.',
+          render: (t) => (
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {t.questions?.length || 0}
+            </span>
+          ),
+          className: 'w-16 text-center',
+        },
+      ]}
+      rowKey={(t) => t._id!}
+      actions={[
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        {
+          icon: <Eye className="w-4 h-4" />,
+          tooltip: 'Ver respuestas',
+          onClick: handleViewResponses,
+          color: 'text-green-600',
+        },
+        {
+          icon: <Pause className="w-4 h-4" />,
+          tooltip: 'Desactivar',
+          onClick: handleToggleStatus,
+          color: 'text-orange-500',
+          show: (t) => t.isActive === true,
+        },
+        {
+          icon: <Play className="w-4 h-4" />,
+          tooltip: 'Activar',
+          onClick: handleToggleStatus,
+          color: 'text-green-500',
+          show: (t) => t.isActive === false,
+        },
+        {
+          icon: <Trash2 className="w-4 h-4" />,
+          tooltip: 'Eliminar',
+          onClick: handleDeleteClick,
+          color: 'text-red-500',
+        },
+      ]}
+      deleteConfirm={
+        deleteConfirm.show
+          ? {
+              show: true,
+              title: 'Eliminar Test',
+              message: `¿Está seguro de eliminar el test "${deleteConfirm.test?.title}"? Esta acción no se puede deshacer.`,
+              variant: 'danger',
+              onConfirm: handleDeleteConfirm,
+              onClose: () => setDeleteConfirm({ show: false, test: null }),
+            }
+          : null
+      }
+    />
   );
 };
 

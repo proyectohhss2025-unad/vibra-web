@@ -3,8 +3,6 @@ import { Feedback } from '@/models/feedback.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -31,7 +29,7 @@ export const createFeedback = async (feedback: Feedback) => {
         return response.data.feedback;
 
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -48,7 +46,7 @@ export const getFeedbackById = async (id: string) => {
 
         return response.data.feedback;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -65,7 +63,7 @@ export const getFeedbackByName = async (name: string) => {
 
         return response.data.feedback;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -75,7 +73,7 @@ export const searchByQuery = async (query: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/feedback/search?searchTerm=${query}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -85,7 +83,7 @@ export const getAllFeedbacks = async (currentPage: number, pageSize: number) => 
         const response = await axios.get(`${configAPI.baseURL}/api/feedback/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -95,7 +93,7 @@ export const getAllFeedbacksByCategory = async (feedbackCategoryId: string, curr
         const response = await axios.get(`${configAPI.baseURL}/api/feedback/byCategory?feedbackCategoryId=${feedbackCategoryId}&page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -105,7 +103,7 @@ export const getAllCategories = async (currentPage: number, pageSize: number) =>
         const response = await axios.get(`${configAPI.baseURL}/api/feedbackCategory/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -115,7 +113,7 @@ export const getAllFeedbacksByUser = async (userId: string, currentPage: number,
         const response = await axios.get(`${configAPI.baseURL}/api/userFeedback/byUser?userId=${userId}&page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -130,7 +128,7 @@ export const updateStatusFeedback = async (feedbackId: string, isActive: boolean
 
         return response.data;
     } catch (error) {
-        logger.error('Error updating feedback status with error:', { error });
+        console.error('Error updating feedback status with error:', { error });
         return null;
     }
 }
@@ -146,7 +144,7 @@ export const addFeedbackToUser = async (feedbackId: string, userId: string, isAc
 
         return response.data.userFeedback;
     } catch (error) {
-        logger.error('Error assigning feedback to user with error:', { error });
+        console.error('Error assigning feedback to user with error:', { error });
         throw error;
     }
 }
@@ -161,7 +159,7 @@ export const softDeleteFeedback = async (feedbackId: string) => {
 
         return response.data.feedback;
     } catch (error) {
-        logger.error('Error deleting feedback with error:', { error });
+        console.error('Error deleting feedback with error:', { error });
         return null;
     }
 }
@@ -193,7 +191,7 @@ export const convertFeedbackToIdea = async (
 
         return await response.json();
     } catch (error) {
-        logger.error('Error converting feedback to idea:', error);
+        console.error('Error converting feedback to idea:', error);
         return null;
     }
 }

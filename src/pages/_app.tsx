@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 
 import dotenv from 'dotenv';
+import '@/lib/i18n';
 import { TabsProvider } from '@/services/contexts/tabs-context';
 import { DeviceProvider } from '@/services/contexts/device-context';
 import { FilterProvider } from '@/services/contexts/filter-context';

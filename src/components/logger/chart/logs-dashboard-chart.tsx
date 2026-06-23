@@ -1,14 +1,7 @@
-import { getLogs, getLogsFiltered } from "@/api/log";
+import { getLogsFiltered } from "@/api/log";
 import { Card, CardContent, CardHeader, CardTitle } from "@/registry/new-york/ui/card";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/registry/new-york/ui/hover-card";
-import { useTabs } from "@/services/contexts/tabs-context";
-import { BarElement, CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
-import { BugOffIcon, CheckIcon, TimerResetIcon, Wallet2Icon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { Bar, Line, Pie } from "react-chartjs-2";
-
-// Registrar componentes de Chart.js
-ChartJS.register(BarElement, LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend);
 
 interface LogEntry {
     id: string;
@@ -24,66 +17,50 @@ const LogsDashboardChart: React.FC = () => {
     const [totalRequests, setTotalRequests] = useState(0);
     const [totalErrors, setTotalErrors] = useState(0);
     const [averageResponseTime, setAverageResponseTime] = useState(0);
-    const { openTab } = useTabs();
+    const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const fetchLogs = async () => {
+        setIsLoading(true);
+        try {
+            const response = await getLogsFiltered("", "", "", "", "", 1, 500);
+            if (!response) {
+                setIsLoading(false);
+                return;
+            }
+            const logsData = response?.paginatedLogs ?? [];
+            setLogs(logsData);
+            setTotalRequests(response?.meta?.totalLogs ?? 0);
+
+            const errors = logsData.filter((log: LogEntry) => log.status >= 400).length;
+            setTotalErrors(errors);
+
+            const avgTime = logsData.length > 0
+                ? logsData.reduce((sum: number, log: LogEntry) => sum + log.responseTime, 0) / logsData.length
+                : 0;
+            setAverageResponseTime(avgTime);
+
+            setLastUpdate(new Date().toLocaleTimeString('es-CO'));
+        } catch (err) {
+            console.error("Error fetching logs:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchLogs = async () => {
-            try {
-                const response = await getLogsFiltered("", "", "", "", "", 1, 1000);
-                setLogs(response?.paginatedLogs);
-                calculateMetrics(response?.paginatedLogs);
-                setTotalRequests(response?.meta?.totalLogs)
-            } catch (error) {
-                console.error("Error fetching logs:", error);
-            }
-        };
-
         fetchLogs();
     }, []);
 
-    // Calcular métricas clave
-    const calculateMetrics = (data: LogEntry[]) => {
-        //setTotalRequests(data.length);
-
-        const errors = data?.filter((log) => log.status >= 400).length;
-        setTotalErrors(errors);
-
-        const avgResponseTime =
-            data?.reduce((sum, log) => sum + log.responseTime, 0) / data?.length || 0;
-        setAverageResponseTime(avgResponseTime);
-    };
-
-    // Preparar datos para gráficos
-    const methodCounts = logs?.reduce((acc, log) => {
+    // Métricas derivadas
+    const methodCounts = logs.reduce((acc, log) => {
         acc[log.method] = (acc[log.method] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
-    const methodsData = {
-        labels: Object.keys(methodCounts),
-        datasets: [
-            {
-                label: "Peticiones por Método",
-                data: Object.values(methodCounts),
-                backgroundColor: ["#4CAF50", "#FFC107", "#F44336", "#2196F3"],
-            },
-        ],
-    };
+    const maxMethodCount = Math.max(...Object.values(methodCounts), 1);
 
-    const responseTimesData = {
-        labels: logs?.map((log) => new Date(log.timestamp).toLocaleTimeString()),
-        datasets: [
-            {
-                label: "Tiempos de Respuesta (ms)",
-                data: logs?.map((log) => log.responseTime),
-                borderColor: "#2196F3",
-                backgroundColor: "rgba(33, 150, 243, 0.2)",
-                tension: 0.2,
-            },
-        ],
-    };
-    // Contar estados HTTP
-    const statusCounts = logs?.reduce(
+    const statusCounts = logs.reduce(
         (acc, log) => {
             if (log.status >= 200 && log.status < 300) acc["2xx"]++;
             else if (log.status >= 300 && log.status < 400) acc["3xx"]++;
@@ -94,133 +71,165 @@ const LogsDashboardChart: React.FC = () => {
         { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 }
     );
 
-    const statusData = {
-        labels: ["2xx: Success", "3xx: Redirects", "4xx: Client Errors", "5xx: Server Errors"],
-        datasets: [
-            {
-                label: "Estados HTTP",
-                data: Object.values(statusCounts),
-                backgroundColor: ["#4CAF50", "#FFC107", "#F44336", "#2196F3"],
-                hoverBackgroundColor: ["#45a049", "#ffb300", "#e53935", "#1976d2"],
-            },
-        ],
+    const statusColors: Record<string, string> = {
+        "2xx": "bg-green-500",
+        "3xx": "bg-yellow-400",
+        "4xx": "bg-orange-500",
+        "5xx": "bg-red-500",
     };
+
+    const methodColors: Record<string, string> = {
+        GET: "bg-blue-500",
+        POST: "bg-green-500",
+        PUT: "bg-yellow-500",
+        PATCH: "bg-orange-500",
+        DELETE: "bg-red-500",
+    };
+
+    const hasData = logs.length > 0;
 
     return (
         <>
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Monitor de peticiones al API</h3>
+                <div className="flex items-center gap-3">
+                    {lastUpdate && <span className="text-xs text-gray-400">Actualizado: {lastUpdate}</span>}
+                    <button onClick={fetchLogs} disabled={isLoading}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50">
+                        <RefreshCwIcon className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                        {isLoading ? 'Cargando...' : 'Actualizar'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <Card className="bg-white rounded-md">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total de peticiones
-                        </CardTitle>
-                        <HoverCard>
-                            <HoverCardTrigger asChild>
-                                <CheckIcon className="h-7 w-7 text-green-500 hover:text-green-700 cursor-pointer" />
-                            </HoverCardTrigger>
-                            <HoverCardContent className="w-80">
-                                <div className="flex justify-between space-x-4" >
-                                    <div className="space-y-1">
-                                        <h4 className="text-sm font-semibold">Datos en el filtro</h4>
-                                        <p className="text-sm">
-                                            {''}
-                                        </p>
-                                    </div>
-                                </div>
-                            </HoverCardContent>
-                        </HoverCard>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Total de peticiones</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold flex items-center">
-                            {totalRequests}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Total de peticiones realizadas al API.
-                        </p>
+                        <div className="text-2xl font-bold">{isLoading ? '---' : totalRequests.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground">Peticiones registradas en el sistema.</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-white rounded-md">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total de errores
-                        </CardTitle>
-                        <HoverCard>
-                            <HoverCardTrigger asChild>
-                                <BugOffIcon className="h-7 w-7 text-red-500 hover:text-red-700 cursor-pointer" />
-                            </HoverCardTrigger>
-                            <HoverCardContent className="w-80">
-                                <div className="flex justify-between space-x-4" >
-                                    <div className="space-y-1">
-                                        <h4 className="text-sm font-semibold">Datos en el filtro</h4>
-                                        <p className="text-sm">
-                                            {''}
-                                        </p>
-                                    </div>
-                                </div>
-                            </HoverCardContent>
-                        </HoverCard>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Errores</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold flex items-center">
-                            {totalErrors}
+                        <div className={`text-2xl font-bold ${totalErrors > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {isLoading ? '---' : totalErrors}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Total de peticiones con errores en la Respuesta.
-                        </p>
+                        <p className="text-xs text-muted-foreground">Peticiones con estado &ge;400.</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-white rounded-md">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Avg. Tiempo de respuesta
-                        </CardTitle>
-                        <HoverCard>
-                            <HoverCardTrigger asChild>
-                                <TimerResetIcon onClick={() => {
-                                }} className="h-7 w-7 text-gray-500 hover:text-gray-700 cursor-pointer" />
-                            </HoverCardTrigger>
-                            <HoverCardContent className="w-80">
-                                <div className="flex justify-between space-x-4" >
-                                    <div className="space-y-1">
-                                        <h4 className="text-sm font-semibold">Datos en el filtro</h4>
-                                        <p className="text-sm">
-                                            {''}
-                                        </p>
-                                    </div>
-                                </div>
-                            </HoverCardContent>
-                        </HoverCard>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Tiempo promedio</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold flex items-center">
-                            {averageResponseTime.toFixed(2)} ms
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Promedio de tiempo de las peticiones realizadas al API.
-                        </p>
+                        <div className="text-2xl font-bold">{isLoading ? '---' : `${averageResponseTime.toFixed(0)} ms`}</div>
+                        <p className="text-xs text-muted-foreground">Tiempo de respuesta promedio.</p>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 gap-y-8 md:grid-cols-3 sm:grid-cols-1 gap-4">
-                {/* Gráfico de Barras */}
-                <div className="bg-white shadow rounded-lg p-4">
-                    <h2 className="text-lg font-bold mb-4">Peticiones por Método</h2>
-                    <Bar data={methodsData} />
+            {!hasData && !isLoading && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+                    <p className="text-amber-700 font-medium">No hay datos de monitoreo</p>
+                    <p className="text-amber-600 text-sm mt-1">
+                        El logger no ha registrado peticiones aún. Aparecerán automáticamente al usar el API.
+                    </p>
                 </div>
+            )}
 
-                {/* Gráfico de Pastel */}
-                <div className="bg-white shadow rounded-lg p-4">
-                    <h2 className="text-lg font-bold mb-4">Distribución de Estados HTTP</h2>
-                    {statusData.datasets.length > 1 && <Pie data={statusData} />}
-                </div>
+            {hasData && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Barras por método HTTP */}
+                    <div className="bg-white shadow rounded-lg p-4">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Peticiones por Método</h4>
+                        <div className="space-y-2">
+                            {Object.entries(methodCounts).map(([method, count]) => (
+                                <div key={method} className="flex items-center gap-3">
+                                    <span className="w-14 text-xs font-mono font-medium text-gray-600">{method}</span>
+                                    <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${methodColors[method] || 'bg-gray-400'}`}
+                                            style={{ width: `${(count / maxMethodCount) * 100}%` }}
+                                        />
+                                    </div>
+                                    <span className="w-10 text-xs text-right font-medium text-gray-700">{count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-                {/* Gráfico de Líneas */}
-                <div className="bg-white shadow rounded-lg p-4">
-                    <h2 className="text-lg font-bold mb-4">Tiempos de Respuesta</h2>
-                    <Line data={responseTimesData} />
+                    {/* Estados HTTP */}
+                    <div className="bg-white shadow rounded-lg p-4">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Distribución de Estados HTTP</h4>
+                        <div className="space-y-2">
+                            {Object.entries(statusCounts).map(([status, count]) => {
+                                const total = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+                                const pct = total > 0 ? (count / total) * 100 : 0;
+                                return (
+                                    <div key={status} className="flex items-center gap-3">
+                                        <span className="w-10 text-xs font-medium text-gray-600">{status}</span>
+                                        <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${statusColors[status] || 'bg-gray-400'}`}
+                                                style={{ width: `${pct}%` }}
+                                            />
+                                        </div>
+                                        <span className="w-10 text-xs text-right font-medium text-gray-700">{count}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Últimas peticiones */}
+                    <div className="bg-white shadow rounded-lg p-4 md:col-span-2">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Últimas peticiones</h4>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b text-left text-gray-500 uppercase tracking-wider">
+                                        <th className="py-1.5 pr-3">Método</th>
+                                        <th className="py-1.5 pr-3">URL</th>
+                                        <th className="py-1.5 pr-3">Status</th>
+                                        <th className="py-1.5 pr-3">Tiempo</th>
+                                        <th className="py-1.5">Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {logs.slice(0, 10).map((log) => (
+                                        <tr key={log.id} className="border-b hover:bg-gray-50">
+                                            <td className="py-1.5 pr-3">
+                                                <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-mono font-medium text-white ${methodColors[log.method] || 'bg-gray-400'}`}>
+                                                    {log.method}
+                                                </span>
+                                            </td>
+                                            <td className="py-1.5 pr-3 text-gray-600 truncate max-w-[300px]" title={log.url}>
+                                                {log.url}
+                                            </td>
+                                            <td className="py-1.5 pr-3">
+                                                <span className={`font-mono font-medium ${log.status >= 400 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    {log.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-1.5 pr-3 text-gray-600">{log.responseTime}ms</td>
+                                            <td className="py-1.5 text-gray-500 whitespace-nowrap">
+                                                {new Date(log.timestamp).toLocaleTimeString('es-CO')}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
         </>
     );
 };

@@ -3,8 +3,6 @@ import { DocumentType } from '@/models/documentType.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -24,7 +22,7 @@ export const createDocumentType = async (documentType: DocumentType) => {
         });
         return response.data.documentType;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -40,7 +38,7 @@ export const getDocumentTypeById = async (id: string) => {
         });
         return response.data.documentType;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -56,7 +54,7 @@ export const getDocumentTypeByName = async (name: string) => {
         });
         return response.data.documentType;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -66,7 +64,7 @@ export const searchByQuery = async (query: string) => {
         const response = await axios.get(`${configAPI.baseURL}/search?searchTerm=${query}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -79,7 +77,7 @@ export const getAllDocumentTypes = async (currentPage: number, pageSize: number)
             documentTypes: response.data
         };
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -89,7 +87,7 @@ export const getAllByCategory = async (categoryDocumentTypeId: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/documentType/allByCategory?categoryDocumentTypeId=${categoryDocumentTypeId}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }

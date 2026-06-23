@@ -49,8 +49,8 @@
     "@reactour/tour": "^3.7.0",
     "@types/pino-pretty": "^5.0.0",
     "@types/react-datepicker": "^6.2.0",
-    "axios": "^1.6.8",
-    "bcrypt": "^5.1.1",
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
     "click-to-react-component": "^1.1.2",
     "clsx": "^2.1.1",
@@ -87,18 +87,18 @@
     "react-tabs": "^6.0.2",
     "react-tooltip": "^5.28.0",
     "recharts": "2.12.7",
-    "socket.io-client": "^4.8.0",
+    "socket.io-client": "^4.8.1",
     "sonner": "^1.2.3",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
     "vaul": "0.9.0",
     "xlsx": "^0.18.5",
-    "zod": "^3.23.8"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.7",
-    "@types/bcrypt": "^5.0.2",
+
     "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
     "@types/react": "18.3.1",
@@ -115,5 +115,8 @@
     "prettier-eslint": "^16.3.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.22.3 <23"
   }
 }

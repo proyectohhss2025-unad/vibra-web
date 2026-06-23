@@ -1,18 +1,17 @@
 'use client'
 
-import { createActivity, getActivityById, updateActivity, CreateActivityPayload } from '@/api/activity';
+import { createActivity, getActivityById, updateActivity, CreateActivityPayload, checkActivityDate } from '@/api/activity';
 import { getAll as getAllEmotions } from '@/api/emotion';
 import { Activity } from '@/models/activity.entity';
 import { Emotion } from '@/models/emotion.entity';
 import { User } from '@/models/user.entity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/registry/new-york/ui/card';
 import { useTabs } from '@/services/contexts/tabs-context';
-import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
+import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { PlusCircleIcon, TrashIcon } from '@heroicons/react/outline';
-import { CheckCircleIcon } from '@heroicons/react/solid';
 import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CardSection from '../ui/card-section';
 import DropdownMenuButton from '../layouts/menu/dropdown-menu-button';
 import Loading from '../layouts/loading/loading';
@@ -21,6 +20,8 @@ import WordSearchForm from './forms/WordSearchForm';
 import MatchingConceptsForm from './forms/MatchingConceptsForm';
 import DiceGameForm from './forms/DiceGameForm';
 import EmotionBoxForm from './forms/EmotionBoxForm';
+import { useVibraForm } from '@/hooks/useVibraForm';
+import { ActivitySchema, type ActivityFormData } from '@/schemas';
 
 type ActivityComponentProps = {
     activityId?: string;
@@ -30,28 +31,56 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
     const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
     const [user] = useState(user_);
 
-    // Campos del formulario
-    const [activityID, setActivityID] = useState<string>('');
-    const [title, setTitle] = useState<string>('');
-    const [description, setDescription] = useState<string>('');
-    const [difficulty, setDifficulty] = useState<number>(1);
-    const [isActive, setIsActive] = useState<boolean>(true);
-    const [idEmotionSelected, setIdEmotionSelected] = useState<string>('');
-    const [labelSelectedEmotion, setLabelSelectedEmotion] = useState<string>('Seleccionar emoción');
-    const [optionsEmotion, setOptionsEmotion] = useState<any[]>([]);
-    const [scheduleDate, setScheduleDate] = useState<string>('');
-    const [scheduleWeek, setScheduleWeek] = useState<number>(1);
-    const [scheduleYear, setScheduleYear] = useState<number>(new Date().getFullYear());
+    // ── useVibraForm para campos principales ──────────────────────────
+    const { register, handleSubmit, errors, reset, setValue, watch } = useVibraForm(ActivitySchema, {
+        title: '',
+        description: '',
+        difficulty: 1,
+        isActive: true,
+        emotionId: '',
+        scheduleDate: '',
+        scheduleWeek: 1,
+        scheduleYear: new Date().getFullYear(),
+    });
+
+    // ── Arrays dinámicos (se mantienen con useState) ──────────────────
     const [resources, setResources] = useState<Activity['resources']>([]);
     const [questions, setQuestions] = useState<Activity['questions']>([]);
     const [tips, setTips] = useState<{ emoji: string; message: string; category?: string }[]>([]);
     const [games, setGames] = useState<{ type: string; config: any; order: number }[]>([]);
 
+    const GAME_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+        WordSearch: { label: 'Sopa de letras', color: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200 hover:text-blue-800 hover:border-blue-400' },
+        MatchingConcepts: { label: 'Relacionar conceptos', color: 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200 hover:text-green-800 hover:border-green-400' },
+        EmotionBox: { label: 'Caja de emociones', color: 'bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200 hover:text-pink-800 hover:border-pink-400' },
+        DiceGame: { label: 'Juego de dados', color: 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200 hover:text-purple-800 hover:border-purple-400' },
+    };
+
+    const countByType = (type: string) => (games ?? []).filter(g => g.type === type).length;
+
+    // ── Scroll al nuevo juego al agregarlo ─────────────────────────────
+    const prevGamesLength = useRef(games.length);
+    useEffect(() => {
+        if (games.length > prevGamesLength.current) {
+            const lastIndex = games.length - 1;
+            requestAnimationFrame(() => {
+                const el = document.getElementById(`game-${lastIndex}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+        prevGamesLength.current = games.length;
+    }, [games.length]);
+
+    // ── Estado auxiliar ───────────────────────────────────────────────
+    const [activityID, setActivityID] = useState<string>('');
+    const [labelSelectedEmotion, setLabelSelectedEmotion] = useState<string>('Seleccionar emoción');
+    const [optionsEmotion, setOptionsEmotion] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [validateForm, setValidateForm] = useState<boolean>(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [dateConflict, setDateConflict] = useState<boolean>(false);
+    const [dateChecking, setDateChecking] = useState<boolean>(false);
 
     const router = useRouter();
     const { closeTab, closeTabWithRefresh } = useTabs();
@@ -61,7 +90,16 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
     const currentTabId = resolvedActivityId ? `/Actividad/${resolvedActivityId}` : '/Actividad';
     const isEditing = !!(resolvedActivityId && resolvedActivityId !== 'undefined' && resolvedActivityId !== 'null');
 
-    // Cargar emociones
+    // Valores observados del formulario
+    const watchTitle = watch('title');
+    const watchDifficulty = watch('difficulty');
+    const watchIsActive = watch('isActive');
+    const watchEmotionId = watch('emotionId');
+    const watchScheduleDate = watch('scheduleDate');
+    const watchScheduleWeek = watch('scheduleWeek');
+    const watchScheduleYear = watch('scheduleYear');
+
+    // ── Cargar emociones ───────────────────────────────────────────────
     useEffect(() => {
         const fetchEmotions = async () => {
             try {
@@ -82,7 +120,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         fetchEmotions();
     }, []);
 
-    // Cargar actividad si hay ID (edición) — con parseo defensivo
+    // ── Cargar actividad si hay ID (edición) ───────────────────────────
     useEffect(() => {
         const getDataActivity = async () => {
             setIsLoading(true);
@@ -90,12 +128,29 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                 const res: any = await getActivityById(resolvedActivityId);
                 if (res?._id) {
                     setActivityID(res._id);
-                    setTitle(typeof res.title === 'string' ? res.title : '');
-                    setDescription(typeof res.description === 'string' ? res.description : '');
-                    setDifficulty(typeof res.difficulty === 'number' ? res.difficulty : 1);
-                    setIsActive(typeof res.isActive === 'boolean' ? res.isActive : true);
 
-                    // Recursos: asegurar estructura correcta
+                    // Reset de campos principales
+                    reset({
+                        title: typeof res.title === 'string' ? res.title : '',
+                        description: typeof res.description === 'string' ? res.description : '',
+                        difficulty: typeof res.difficulty === 'number' ? res.difficulty : 1,
+                        isActive: typeof res.isActive === 'boolean' ? res.isActive : true,
+                        emotionId: '',
+                        scheduleDate: res.schedule?.date
+                            ? new Date(res.schedule.date).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+                            : '',
+                        scheduleWeek: typeof res.schedule?.weekNumber === 'number' ? res.schedule.weekNumber : 1,
+                        scheduleYear: typeof res.schedule?.year === 'number' ? res.schedule.year : new Date().getFullYear(),
+                    });
+
+                    // Emoción
+                    const rawEmotion = res.emotion;
+                    const emotionId = typeof rawEmotion === 'object' && rawEmotion !== null
+                        ? (rawEmotion._id ?? rawEmotion['$oid'] ?? '')
+                        : (typeof rawEmotion === 'string' ? rawEmotion : '');
+                    setValue('emotionId', emotionId);
+
+                    // Recursos
                     const rawResources = Array.isArray(res.resources) ? res.resources : [];
                     setResources(rawResources.map((r: any) => ({
                         type: (r.type === 'video' || r.type === 'audio') ? r.type : 'video',
@@ -104,7 +159,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                         metadata: r.metadata ?? { author: '', language: '' },
                     })));
 
-                    // Preguntas: asegurar estructura correcta
+                    // Preguntas
                     const rawQuestions = Array.isArray(res.questions) ? res.questions : [];
                     setQuestions(rawQuestions.map((q: any) => ({
                         id: typeof q.id === 'string' ? q.id : `q${Date.now()}`,
@@ -115,15 +170,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                         points: typeof q.points === 'number' ? q.points : 5,
                     })));
 
-                    // Schedule: puede venir como objeto, null, undefined
-                    if (res.schedule && typeof res.schedule === 'object') {
-                        const sched = res.schedule;
-                        setScheduleDate(sched.date ? new Date(sched.date).toISOString().split('T')[0] : '');
-                        setScheduleWeek(typeof sched.weekNumber === 'number' ? sched.weekNumber : 1);
-                        setScheduleYear(typeof sched.year === 'number' ? sched.year : new Date().getFullYear());
-                    }
-
-                    // Tips: cargar tips existentes
+                    // Tips
                     if (Array.isArray(res.tips)) {
                         setTips(res.tips.map((t: any) => ({
                             emoji: typeof t.emoji === 'string' ? t.emoji : '😊',
@@ -132,7 +179,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                         })));
                     }
 
-                    // Juegos: cargar juegos existentes
+                    // Juegos
                     if (Array.isArray(res.games)) {
                         setGames(res.games.map((g: any) => ({
                             type: g.type,
@@ -140,12 +187,6 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                             order: typeof g.order === 'number' ? g.order : 0,
                         })));
                     }
-
-                    // Emoción: puede venir como objeto {_id, name}, string, o {$oid: '...'}
-                    const emotionId = typeof res.emotion === 'object' && res.emotion !== null
-                        ? (res.emotion._id ?? res.emotion['$oid'] ?? '')
-                        : (typeof res.emotion === 'string' ? res.emotion : '');
-                    setIdEmotionSelected(emotionId);
                 } else {
                     console.warn('Actividad no encontrada:', resolvedActivityId);
                     setError('No se encontró la actividad solicitada');
@@ -162,31 +203,46 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         if (isEditing) {
             getDataActivity();
         }
-    }, [resolvedActivityId, isEditing]);
+    }, [resolvedActivityId, isEditing, reset, setValue]);
 
-    // Sincronizar label de emoción cuando cargan las opciones
+    // ── Sincronizar label de emoción cuando cargan las opciones ────────
     useEffect(() => {
-        if (idEmotionSelected && optionsEmotion.length > 0) {
-            const found = optionsEmotion.find(o => o._id === idEmotionSelected);
+        if (watchEmotionId && optionsEmotion.length > 0) {
+            const found = optionsEmotion.find(o => o._id === watchEmotionId);
             if (found) setLabelSelectedEmotion(found.name);
         }
-    }, [idEmotionSelected, optionsEmotion]);
+    }, [watchEmotionId, optionsEmotion]);
 
+    // ── Validar fecha duplicada al cambiar la fecha ────────────────────
     useEffect(() => {
-        setValidateForm(!!(title && idEmotionSelected));
-    }, [title, idEmotionSelected]);
+        if (!watchScheduleDate) {
+            setDateConflict(false);
+            return;
+        }
+        setDateChecking(true);
+        const timeout = setTimeout(async () => {
+            try {
+                const exists = await checkActivityDate(watchScheduleDate, isEditing ? activityID : undefined);
+                setDateConflict(exists);
+            } catch {
+                setDateConflict(false);
+            } finally {
+                setDateChecking(false);
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
+    }, [watchScheduleDate, activityID, isEditing]);
 
     // ── Validación cliente antes de enviar ─────────────────────────────
     const validatePayload = (): string | null => {
-        if (!title.trim()) return 'El título es obligatorio';
-        if (!idEmotionSelected) return 'Debe seleccionar una emoción';
-        if (difficulty < 1 || difficulty > 5) return 'La dificultad debe estar entre 1 y 5';
+        if (!watchTitle.trim()) return 'El título es obligatorio';
+        if (!watchEmotionId) return 'Debe seleccionar una emoción';
+        if (watchDifficulty < 1 || watchDifficulty > 5) return 'La dificultad debe estar entre 1 y 5';
         return null;
     };
 
     // ── Envío del formulario ───────────────────────────────────────────
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleFormSubmit = async (data: ActivityFormData) => {
         setError('');
         setSuccess('');
 
@@ -199,7 +255,6 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         setIsSubmitting(true);
 
         try {
-            // Sanitizar resources: limpiar campos vacíos
             const cleanResources = (resources ?? [])
                 .filter(r => r.url.trim() !== '')
                 .map(r => ({
@@ -209,7 +264,6 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                     metadata: r.metadata ?? { author: '', language: '' },
                 }));
 
-            // Sanitizar questions: limpiar preguntas vacías
             const cleanQuestions = (questions ?? [])
                 .filter(q => q.questionText.trim() !== '')
                 .map(q => ({
@@ -222,19 +276,19 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                 }));
 
             const payload: CreateActivityPayload = {
-                title: title.trim(),
-                description: description?.trim() || undefined,
-                difficulty,
-                isActive,
-                emotion: idEmotionSelected,
+                title: data.title.trim(),
+                description: data.description?.trim() || undefined,
+                difficulty: data.difficulty,
+                isActive: data.isActive,
+                emotion: data.emotionId,
                 resources: cleanResources,
                 questions: cleanQuestions,
                 tips: (tips ?? []).filter(t => t.message.trim() !== ''),
                 games: (games ?? []).filter(g => g.type).map(g => ({ ...g, config: g.config })),
-                schedule: scheduleDate ? {
-                    date: new Date(scheduleDate),
-                    weekNumber: scheduleWeek,
-                    year: scheduleYear,
+                schedule: data.scheduleDate ? {
+                    date: new Date(`${data.scheduleDate}T00:00:00-05:00`),
+                    weekNumber: data.scheduleWeek,
+                    year: data.scheduleYear,
                 } : undefined,
             };
 
@@ -257,13 +311,18 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
     const handleCancel = () => {
         if (!isSubmitting) closeTab(currentTabId);
     };
+
     const handleBackToList = () => {
         if (!isSubmitting) closeTabWithRefresh(currentTabId, true);
     };
 
     const handleClean = () => {
-        setSuccess(''); setTitle(''); setDescription(''); setActivityID('');
-        setIdEmotionSelected(''); setLabelSelectedEmotion('Seleccionar emoción');
+        setSuccess('');
+        reset({
+            title: '', description: '', difficulty: 1, isActive: true,
+            emotionId: '', scheduleDate: '', scheduleWeek: 1, scheduleYear: new Date().getFullYear(),
+        });
+        setLabelSelectedEmotion('Seleccionar emoción');
         setResources([]); setQuestions([]);
         window.scrollTo(0, 0);
     };
@@ -356,7 +415,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
 
                 <CardContent className="px-4">
                     {!success && (
-                        <form onSubmit={handleSubmit}>
+                        <form onSubmit={handleSubmit(handleFormSubmit)}>
                             <div className="w-full space-y-6">
 
                                 {/* ── Sección principal ── */}
@@ -368,11 +427,11 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                             <div className="flex-[3] max-w-[460px]">
                                                 <label htmlFor="title" className="block text-sm font-medium leading-6 text-gray-900">Título *</label>
                                                 <div className="mt-1 flex rounded-md shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-inset focus-within:ring-blue-600">
-                                                    <input type="text" id="title" value={title}
-                                                        onChange={e => setTitle(e.target.value)}
+                                                    <input type="text" id="title" {...register('title')}
                                                         className="block w-full border-0 bg-transparent py-1.5 px-3 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm sm:leading-6 rounded-md"
-                                                        placeholder="Ej: Respiración consciente" required />
+                                                        placeholder="Ej: Respiración consciente" />
                                                 </div>
+                                                {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
                                             </div>
 
                                             {/* Emoción */}
@@ -382,7 +441,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                                     label={labelSelectedEmotion}
                                                     options={optionsEmotion}
                                                     renderOption={renderOption}
-                                                    onSelect={(opt: any) => { setIdEmotionSelected(opt._id); setLabelSelectedEmotion(opt.label); }}
+                                                    onSelect={(opt: any) => { setValue('emotionId', opt._id); setLabelSelectedEmotion(opt.label); }}
                                                     valueSelected={labelSelectedEmotion}
                                                     minWidth="w-auto"
                                                 />
@@ -392,8 +451,9 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                             <div className="w-32">
                                                 <label htmlFor="difficulty" className="block text-sm font-medium leading-6 text-gray-900">Dificultad (1-5)</label>
                                                 <div className="mt-1">
-                                                    <input type="number" id="difficulty" min={1} max={5} value={difficulty}
-                                                        onChange={e => setDifficulty(Number(e.target.value))}
+                                                    <input type="number" id="difficulty" min={1} max={5}
+                                                        value={watchDifficulty}
+                                                        onChange={e => setValue('difficulty', Number(e.target.value))}
                                                         className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                                 </div>
                                             </div>
@@ -403,13 +463,13 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                                 <label className="block text-sm font-medium leading-6 text-gray-900 mb-1">Activo</label>
                                                 <div className="flex items-center gap-2">
                                                     <button type="button"
-                                                        onClick={() => setIsActive(true)}
-                                                        className={`px-3 py-1.5 rounded-md text-sm font-semibold ${isActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                                        onClick={() => setValue('isActive', true)}
+                                                        className={`px-3 py-1.5 rounded-md text-sm font-semibold ${watchIsActive ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
                                                         Sí
                                                     </button>
                                                     <button type="button"
-                                                        onClick={() => setIsActive(false)}
-                                                        className={`px-3 py-1.5 rounded-md text-sm font-semibold ${!isActive ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                                                        onClick={() => setValue('isActive', false)}
+                                                        className={`px-3 py-1.5 rounded-md text-sm font-semibold ${!watchIsActive ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
                                                         No
                                                     </button>
                                                 </div>
@@ -420,8 +480,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                         <div>
                                             <label htmlFor="description" className="block text-sm font-medium leading-6 text-gray-900">Descripción</label>
                                             <div className="mt-1">
-                                                <textarea rows={2} id="description" value={description}
-                                                    onChange={e => setDescription(e.target.value)}
+                                                <textarea rows={2} id="description" {...register('description')}
                                                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                             </div>
                                         </div>
@@ -433,20 +492,32 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                     <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
                                         <div>
                                             <label htmlFor="scheduleDate" className="block text-sm font-medium leading-6 text-gray-900">Fecha</label>
-                                            <input type="date" id="scheduleDate" value={scheduleDate}
-                                                onChange={e => setScheduleDate(e.target.value)}
-                                                className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
+                                            <input type="date" id="scheduleDate"
+                                                value={watchScheduleDate}
+                                                onChange={e => setValue('scheduleDate', e.target.value)}
+                                                className={`mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ${dateConflict ? 'ring-red-500 bg-red-50' : 'ring-gray-300'} focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6`} />
+                                            {dateChecking && (
+                                                <p className="text-xs text-gray-400 mt-1">Verificando fecha...</p>
+                                            )}
+                                            {dateConflict && (
+                                                <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                                                    <span>⚠</span>
+                                                    Ya existe una actividad para la fecha seleccionada. Debes elegir otra fecha.
+                                                </p>
+                                            )}
                                         </div>
                                         <div>
                                             <label htmlFor="scheduleWeek" className="block text-sm font-medium leading-6 text-gray-900">Semana</label>
-                                            <input type="number" id="scheduleWeek" min={1} max={53} value={scheduleWeek}
-                                                onChange={e => setScheduleWeek(Number(e.target.value))}
+                                            <input type="number" id="scheduleWeek" min={1} max={53}
+                                                value={watchScheduleWeek}
+                                                onChange={e => setValue('scheduleWeek', Number(e.target.value))}
                                                 className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                         </div>
                                         <div>
                                             <label htmlFor="scheduleYear" className="block text-sm font-medium leading-6 text-gray-900">Año</label>
-                                            <input type="number" id="scheduleYear" min={2020} value={scheduleYear}
-                                                onChange={e => setScheduleYear(Number(e.target.value))}
+                                            <input type="number" id="scheduleYear" min={2020}
+                                                value={watchScheduleYear}
+                                                onChange={e => setValue('scheduleYear', Number(e.target.value))}
                                                 className="mt-2 block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6" />
                                         </div>
                                     </div>
@@ -565,120 +636,128 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                     ))}
                                 </CardSection>
 
-                            {/* ── Tips motivacionales ─────────────────────────────── */}
-                            <CardSection title="Tips de Apoyo Emocional" subtitle="Mensajes de ánimo personalizados">
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-sm font-medium text-gray-600">Tips ({tips?.length ?? 0})</p>
-                                    <button type="button" onClick={addTip}
-                                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-500">
-                                        <PlusCircleIcon className="h-4 w-4" />
-                                        Agregar tip
-                                    </button>
-                                </div>
-                                {tips.length === 0 && (
-                                    <p className="text-sm text-gray-400 italic">Sin tips configurados. Se usarán los tips por defecto.</p>
-                                )}
-                                {tips.map((tip, i) => (
-                                    <div key={i} className="flex items-start gap-2 mb-2 p-2 bg-gray-50 rounded-md">
-                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
-                                            <input type="text" value={tip.emoji}
-                                                onChange={e => updateTip(i, 'emoji', e.target.value)}
-                                                className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
-                                                placeholder="😊 (emoji)" />
-                                            <input type="text" value={tip.message}
-                                                onChange={e => updateTip(i, 'message', e.target.value)}
-                                                className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
-                                                placeholder="Mensaje del tip..." />
-                                            <select value={tip.category ?? ''}
-                                                onChange={e => updateTip(i, 'category', e.target.value || undefined)}
-                                                className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm">
-                                                <option value="">Todas las actividades</option>
-                                                <option value="start">Inicio</option>
-                                                <option value="question">Preguntas</option>
-                                                <option value="wordsearch">Sopa de letras</option>
-                                                <option value="matching">Emparejar</option>
-                                                <option value="emotionbox">Caja emociones</option>
-                                                <option value="dicegame">Juego dados</option>
-                                                <option value="complete">Finalizar</option>
-                                            </select>
-                                        </div>
-                                        <button type="button" onClick={() => removeTip(i)}
-                                            className="text-red-400 hover:text-red-600 mt-1">
-                                            <TrashIcon className="h-4 w-4" />
+                                {/* ── Tips motivacionales ─────────────────────────────── */}
+                                <CardSection title="Tips de Apoyo Emocional" subtitle="Mensajes de ánimo personalizados">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-sm font-medium text-gray-600">Tips ({tips?.length ?? 0})</p>
+                                        <button type="button" onClick={addTip}
+                                            className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-500">
+                                            <PlusCircleIcon className="h-4 w-4" />
+                                            Agregar tip
                                         </button>
                                     </div>
-                                ))}
-                            </CardSection>
-
-                            {/* ── Juegos de la actividad ──────────────────────────── */}
-                            <CardSection title="Juegos" subtitle="Seleccione y configure los juegos">
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-sm font-medium text-gray-600">Juegos ({games?.length ?? 0})</p>
-                                    <div className="flex gap-1 flex-wrap">
-                                        {['WordSearch', 'MatchingConcepts', 'EmotionBox', 'DiceGame'].map(type => (
-                                            <button key={type} type="button" onClick={() => addGame(type)}
-                                                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-500 border border-blue-300 rounded px-2 py-1">
-                                                <PlusCircleIcon className="h-3 w-3" />
-                                                {type}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {games.length === 0 && (
-                                    <p className="text-sm text-gray-400 italic mb-2">Sin juegos configurados. Solo se mostrará el flujo de preguntas estándar.</p>
-                                )}
-                                {games.map((game, i) => (
-                                    <div key={i} className="border border-gray-200 rounded-md p-3 mb-2 bg-gray-50">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-semibold text-gray-700 bg-blue-100 px-2 py-0.5 rounded">{game.type}</span>
-                                            <button type="button" onClick={() => removeGame(i)}
-                                                className="text-red-400 hover:text-red-600">
+                                    {tips.length === 0 && (
+                                        <p className="text-sm text-gray-400 italic">Sin tips configurados. Se usarán los tips por defecto.</p>
+                                    )}
+                                    {tips.map((tip, i) => (
+                                        <div key={i} className="flex items-start gap-2 mb-2 p-2 bg-gray-50 rounded-md">
+                                            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                <input type="text" value={tip.emoji}
+                                                    onChange={e => updateTip(i, 'emoji', e.target.value)}
+                                                    className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+                                                    placeholder="😊 (emoji)" />
+                                                <input type="text" value={tip.message}
+                                                    onChange={e => updateTip(i, 'message', e.target.value)}
+                                                    className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
+                                                    placeholder="Mensaje del tip..." />
+                                                <select value={tip.category ?? ''}
+                                                    onChange={e => updateTip(i, 'category', e.target.value || undefined)}
+                                                    className="rounded-md border-0 py-1 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm">
+                                                    <option value="">Todas las actividades</option>
+                                                    <option value="start">Inicio</option>
+                                                    <option value="question">Preguntas</option>
+                                                    <option value="wordsearch">Sopa de letras</option>
+                                                    <option value="matching">Emparejar</option>
+                                                    <option value="emotionbox">Caja emociones</option>
+                                                    <option value="dicegame">Juego dados</option>
+                                                    <option value="complete">Finalizar</option>
+                                                </select>
+                                            </div>
+                                            <button type="button" onClick={() => removeTip(i)}
+                                                className="text-red-400 hover:text-red-600 mt-1">
                                                 <TrashIcon className="h-4 w-4" />
                                             </button>
                                         </div>
-                                        <div className="text-xs text-gray-500 mb-1">Configuración:</div>
-                                        {game.type === 'WordSearch' && (
-                                            <WordSearchForm config={game.config} onChange={(cfg) => {
-                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
-                                            }} />
-                                        )}
-                                        {game.type === 'MatchingConcepts' && (
-                                            <MatchingConceptsForm config={game.config} onChange={(cfg) => {
-                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
-                                            }} />
-                                        )}
-                                        {game.type === 'DiceGame' && (
-                                            <DiceGameForm config={game.config} onChange={(cfg) => {
-                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
-                                            }} />
-                                        )}
-                                        {game.type === 'EmotionBox' && (
-                                            <EmotionBoxForm config={game.config} onChange={(cfg) => {
-                                                const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
-                                            }} />
-                                        )}
+                                    ))}
+                                </CardSection>
+
+                                {/* ── Juegos de la actividad ──────────────────────────── */}
+                                <CardSection title="Juegos" subtitle="Seleccione y configure los juegos">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-sm font-medium text-gray-600">Juegos ({games?.length ?? 0})</p>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {Object.entries(GAME_TYPE_CONFIG).map(([type, cfg]) => {
+                                                const count = countByType(type);
+                                                return (
+                                                    <button key={type} type="button" onClick={() => addGame(type)}
+                                                        className={`inline-flex items-center gap-1.5 text-xs font-medium border rounded-md px-2.5 py-1.5 transition-all duration-150 ${cfg.color}`}>
+                                                        <PlusCircleIcon className="h-3.5 w-3.5" />
+                                                        <span>{cfg.label}</span>
+                                                        {count > 0 && (
+                                                            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-white bg-opacity-70 text-[11px] font-bold px-1 shadow-sm">
+                                                                {count}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                ))}
-                            </CardSection>
+                                    {games.length === 0 && (
+                                        <p className="text-sm text-gray-400 italic mb-2">Sin juegos configurados. Solo se mostrará el flujo de preguntas estándar.</p>
+                                    )}
+                                    {games.map((game, i) => (
+                                        <div key={i} id={`game-${i}`} className="border border-gray-200 rounded-md p-3 mb-2 bg-gray-50">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-semibold text-gray-700 bg-blue-100 px-2 py-0.5 rounded">{GAME_TYPE_CONFIG[game.type]?.label || game.type}</span>
+                                                <button type="button" onClick={() => removeGame(i)}
+                                                    className="text-red-400 hover:text-red-600">
+                                                    <TrashIcon className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="text-xs text-gray-500 mb-1">Configuración:</div>
+                                            {game.type === 'WordSearch' && (
+                                                <WordSearchForm config={game.config} onChange={(cfg) => {
+                                                    const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                                }} />
+                                            )}
+                                            {game.type === 'MatchingConcepts' && (
+                                                <MatchingConceptsForm config={game.config} onChange={(cfg) => {
+                                                    const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                                }} />
+                                            )}
+                                            {game.type === 'DiceGame' && (
+                                                <DiceGameForm config={game.config} onChange={(cfg) => {
+                                                    const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                                }} />
+                                            )}
+                                            {game.type === 'EmotionBox' && (
+                                                <EmotionBoxForm config={game.config} onChange={(cfg) => {
+                                                    const updated = [...games]; updated[i] = { ...updated[i], config: cfg }; setGames(updated);
+                                                }} />
+                                            )}
+                                        </div>
+                                    ))}
+                                </CardSection>
 
-                            {error && (
-                                <div className="rounded-md bg-red-50 p-3 mt-4">
-                                    <p className="text-sm font-medium text-red-800">{error}</p>
+                                {error && (
+                                    <div className="rounded-md bg-red-50 p-3 mt-4">
+                                        <p className="text-sm font-medium text-red-800">{error}</p>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-end gap-4 mt-6 mb-4">
+                                    <button onClick={handleCancel} type="button"
+                                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 rounded-md px-4 py-2 text-sm font-semibold text-white">
+                                        <XCircleIcon className="w-4 h-4" />
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" disabled={isSubmitting || dateConflict}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                        <SaveIcon className="w-4 h-4" />
+                                        {isSubmitting ? 'Guardando...' : 'Guardar actividad'}
+                                    </button>
                                 </div>
-                            )}
-
-                            <div className="flex items-center justify-end gap-4 mt-6 mb-4">
-                                <button onClick={handleCancel} type="button"
-                                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 rounded-md px-4 py-2 text-sm font-semibold text-white">
-                                    <XCircleIcon className="w-4 h-4" />
-                                    Cancelar
-                                </button>
-                                <button type="submit" disabled={isSubmitting}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                    <SaveIcon className="w-4 h-4" />
-                                    {isSubmitting ? 'Guardando...' : 'Guardar actividad'}
-                                </button>
-                            </div>
                             </div>
                         </form>
                     )}

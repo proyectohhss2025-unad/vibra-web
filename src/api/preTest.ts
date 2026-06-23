@@ -149,9 +149,20 @@ export const updatePreTestStatus = async (id: string, status: string) => {
  * Obtiene respuestas de un test específico con paginación
  * GET /api/pretests/by-test/:testId?page=1&limit=10
  */
-export const getByTestId = async (testId: string, page = 1, limit = 10): Promise<{ data: any[]; total: number }> => {
+export const getByTestId = async (
+    testId: string,
+    page = 1,
+    limit = 10,
+    userId?: string,
+    dateFrom?: string,
+    dateTo?: string,
+): Promise<{ data: any[]; total: number }> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/pretests/by-test/${testId}?page=${page}&limit=${limit}`);
+        const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+        if (userId) params.set('userId', userId);
+        if (dateFrom) params.set('dateFrom', dateFrom);
+        if (dateTo) params.set('dateTo', dateTo);
+        const response = await fetch(`${configAPI.baseURL}/api/pretests/by-test/${testId}?${params.toString()}`);
         return await response.json();
     } catch (error) {
         console.error('Error al obtener respuestas por test:', error);

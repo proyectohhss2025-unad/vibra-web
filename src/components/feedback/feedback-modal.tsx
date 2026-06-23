@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 
 interface FeedbackModalProps {
     isOpen: boolean;
@@ -23,8 +24,12 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, initialType, onCl
         setIsSubmitting(true);
         try {
             await onSubmit({ title: title.trim(), description: description.trim(), type: initialType });
+            toast.success('¡Gracias por tu sugerencia! Hemos recibido tu feedback correctamente.');
             setTitle('');
             setDescription('');
+            onClose();
+        } catch (error) {
+            toast.error('No pudimos enviar tu feedback. Intenta de nuevo más tarde.');
         } finally {
             setIsSubmitting(false);
         }

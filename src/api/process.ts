@@ -3,8 +3,6 @@ import { Process } from '@/models/process.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 const configAPI = {
     baseURL: config[environment].apiDashboard,
@@ -27,7 +25,7 @@ export const createProcess = async (process: Process) => {
 
         return response.data.process;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -44,7 +42,7 @@ export const getProcessById = async (id: string) => {
 
         return response.data.process;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -61,7 +59,7 @@ export const getProcessByName = async (name: string) => {
 
         return response.data.process;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -72,7 +70,7 @@ export const searchByQuery = async (query: string) => {
 
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -82,7 +80,7 @@ export const getAll = async (currentPage: number, pageSize: number) => {
         const response = await axios.get(`${configAPI.baseURL}/api/process/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }

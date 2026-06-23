@@ -1,218 +1,116 @@
 "use client"
 
-import {
-  CaretSortIcon,
-  CheckIcon,
-  PlusCircledIcon,
-} from "@radix-ui/react-icons"
+import { SearchIcon, ExternalLinkIcon } from "lucide-react"
 import * as React from "react"
-
+import { useState, useEffect, useContext } from "react"
 import { getAllParticipants } from "@/api/participant"
-import { cn } from "@/lib/utils"
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/registry/new-york/ui/avatar"
-import { Button } from "@/registry/new-york/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/registry/new-york/ui/command"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from "@/registry/new-york/ui/dialog"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/registry/new-york/ui/popover"
+import { Button } from "@/registry/new-york/ui/button"
 import { AuthContext } from "@/services/auth"
-import { getSafeKeyObjectFromStorage } from "@/utils/safe-token-storage"
 import { useRouter } from "next/router"
-import { useContext, useEffect, useState } from "react"
 import { useTabs } from "@/services/contexts/tabs-context"
-import { useFilter } from "@/services/contexts/filter-context"
+import UserProfilePage from "@/components/reports/user-profile-page"
 
-type PopoverTriggerProps = React.ComponentPropsWithoutRef<typeof PopoverTrigger>
-
-interface TeamSwitcherProps extends PopoverTriggerProps {
-  getDataFilterByParticipant: () => void;
-}
-
-export default function TeamSwitcher({ className, getDataFilterByParticipant }: TeamSwitcherProps) {
-  const participantSelected: any = JSON.parse(getSafeKeyObjectFromStorage('participantSelected')) ?? JSON.parse(getSafeKeyObjectFromStorage('participantSelected'));
-
-  const { setParticipantSelected } = useTabs();
-  const { setParticipantFilter } = useFilter();
-
-  const participantAux = {
-    label: "Todos los usuarios",
-    value: "Todos los usuarios",
-    avatar: "03.jpg",
-    _id: 'all'
-  };
-  const { token } = useContext(AuthContext);
-  const [open, setOpen] = React.useState(false)
-  const [showNewTeamDialog, setShowNewTeamDialog] = React.useState(false)
-
-  const [groups, setGroups] = React.useState<any>([{
-    label: "",
-    teams: [participantAux],
-  }]);
-
-  const [selectedTeam, setSelectedTeam] = useState<any>(participantSelected ?? participantAux);
-  const [countData, setCountData] = useState(1);
+export default function TeamSwitcher() {
+  const { openTab } = useTabs();
+  const { token, user, mainCompany, resolvedPermissions } = useContext(AuthContext);
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [participants, setParticipants] = useState<any[]>([]);
 
-  useEffect((): any => {
-    setSelectedTeam(participantSelected ?? participantAux);
-    setParticipantFilter(participantSelected ?? participantAux);
-  }, []);
-
-  useEffect((): any => {
-    console.log('selectedTeam: ', selectedTeam);
-
+  useEffect(() => {
     if (!token) {
-      router.push('/layout');
+      router.push("/layout");
+      return;
     }
-
-    const fetchData = async () => {
-      const { participants, count } = await getAllParticipants(1, 50);
-      let newGroups: any = [];
-      participants?.forEach((participant: any) => {
-        newGroups.push({
-          label: participant.name,
-          value: participant.nit,
-          avatar: participant.avatar,
-          _id: participant._id,
-          epsCode: participant.epsCode,
-          regime: participant.regime
-        });
-      });
-
-      setGroups([...groups, {
-        label: "Todos los usuarios",
-        teams: newGroups,
-      }]);
-
-      setCountData(count);
-    }
-
-    fetchData();
+    const isAdmin = resolvedPermissions?.isSuperAdmin || (user?.role as any)?.name === "Administrador";
+    const companyId = isAdmin ? undefined : mainCompany?._id || (user?.company as any)?._id;
+    getAllParticipants(1, 100, companyId).then(({ participants: data }) => {
+      setParticipants(data || []);
+    });
   }, [token, router]);
 
+  const filtered = participants.filter((p: any) =>
+    p.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
-  useEffect((): any => {
-    getDataFilterByParticipant();
-  }, [selectedTeam]);
+  const goToProfile = (participant: any) => {
+    const userId = participant.userId;
+    if (!userId) return;
+    setOpen(false);
+    openTab(
+      `/perfil/${userId}`,
+      `Perfil: ${participant.name}`,
+      <UserProfilePage userId={userId} userName={participant.name} />
+    );
+  };
 
   return (
-    <Dialog open={showNewTeamDialog} onOpenChange={setShowNewTeamDialog}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild className="hover:text-gray-600">
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            aria-label="Select a team"
-            className={cn("w-[260px] justify-between", className)}
-          >
-            <Avatar className="mr-2 h-5 w-5">
-              <AvatarImage
-                src={`/avatars/${selectedTeam?.avatar}`}
-                alt={selectedTeam?.label}
-                className="grayscale"
-              />
-              <AvatarFallback>{selectedTeam?.label}</AvatarFallback>
-            </Avatar>
-            {selectedTeam?.label}
-            <CaretSortIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[260px] p-0">
-          <Command>
-            <CommandInput placeholder="Busqueda ..." />
-            <CommandList>
-              <CommandEmpty>No se ha encontrado un usuario</CommandEmpty>
-              <div style={{ height: "50vh", overflowY: "auto" }}>
-                {groups?.map((group: any, index: number) => (
-                  <CommandGroup key={`${group._id}_${index}`} heading={group.label}>
-                    {group?.teams?.map((team: any) => (
-                      <CommandItem
-                        key={`${team?.value}_${index}`}
-                        onSelect={() => {
-                          setSelectedTeam(team);
-                          localStorage.setItem('participantSelected', JSON.stringify(team));
-                          setParticipantFilter(team);
-                          //setOpen(false)
-                          setParticipantSelected(team);
-                        }}
-                        className="text-sm"
-                      >
-                        <Avatar className="mr-2 h-5 w-5">
-                          <AvatarImage
-                            src={`/avatars/${team?.avatar}`}
-                            alt={team?.label}
-                            className="grayscale"
-                          />
-                          <AvatarFallback>{team?.avatar}</AvatarFallback>
-                        </Avatar>
-                        {team?.label}
-                        <CheckIcon
-                          className={cn(
-                            "ml-auto h-4 w-4",
-                            selectedTeam?.value === team?.value
-                              ? "opacity-100"
-                              : "opacity-0"
-                          )}
-                        />
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-              </div>
-            </CommandList>
-            <CommandSeparator />
-            <CommandList>
-              <CommandGroup>
-                <DialogTrigger asChild>
-                  <CommandItem
-                    onSelect={() => {
-                      setOpen(false)
-                      setShowNewTeamDialog(true)
-                    }}
-                  >
-                    <PlusCircledIcon className="mr-2 h-5 w-5" />
-                    Crear nuevo participante
-                  </CommandItem>
-                </DialogTrigger>
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Crear nuevo participante</DialogTitle>
-          <DialogDescription>
-            Agregue un nuevo participante para gestionar participaciones.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="mr-2">
-          {/*<AddParticipant nitParticipant={'0'} onClose={() => setShowNewTeamDialog(false)} />*/}
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="ml-2 w-[260px] justify-between text-sm text-gray-500"
+        >
+          <SearchIcon className="h-4 w-4 mr-1" />
+          Buscar participante...
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0" align="start">
+        <div className="p-2">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Nombre del participante..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
         </div>
-      </DialogContent>
-    </Dialog>
-  )
+        <div className="max-h-[50vh] overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="text-center py-6 text-sm text-gray-400">
+              {search ? "No se encontraron participantes" : "Escribe para buscar..."}
+            </div>
+          ) : (
+            <ul className="py-1">
+              {filtered.map((p: any) => (
+                <li key={p._id}>
+                  <button
+                    type="button"
+                    onClick={() => goToProfile(p)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-blue-50 transition-colors text-left"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-blue-100 text-blue-600 text-xs font-semibold">
+                        {p.name?.charAt(0)?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate">{p.name}</div>
+                      {p.documentNumber && (
+                        <div className="text-xs text-gray-400">Doc: {p.documentNumber}</div>
+                      )}
+                    </div>
+                    <ExternalLinkIcon className="h-4 w-4 text-gray-300 hover:text-blue-500 flex-shrink-0" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }

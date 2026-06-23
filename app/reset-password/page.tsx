@@ -1,16 +1,18 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { validateResetToken } from '@/api/password-reset';
 import ResetPasswordForm from '@/components/reset-password/ResetPasswordForm';
 import { AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 function ResetPasswordContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const token = searchParams?.get('token');
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setToken(params.get('token'));
+  }, []);
 
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid'>('loading');
   const [email, setEmail] = useState('');
@@ -114,15 +116,5 @@ function ResetPasswordContent() {
 }
 
 export default function ResetPasswordPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-50 flex items-center justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-vibra-blue border-t-transparent rounded-full" />
-        </div>
-      }
-    >
-      <ResetPasswordContent />
-    </Suspense>
-  );
+  return <ResetPasswordContent />;
 }

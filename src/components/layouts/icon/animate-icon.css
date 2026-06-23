@@ -2,7 +2,7 @@
 .sidebar a:hover svg,
 .sidebar a.active svg {
   color: var(--sidebar-accent, #4f46e5) !important;
-  transform: scale(1.1);
+  transform: scale(1.04);
 }
 
 .sidebar a svg {

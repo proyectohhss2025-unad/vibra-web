@@ -1,13 +1,13 @@
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
+
 
 export const items = [{
     "_id": "1",
     "name": "Home",
     "href": "/home-dashboard",
-    "label": getSafeKeyFromStorage('Home'),
+    "label": 'Home',
     "color": "#EAEAEA",
     "icon": "PrinterIcon",
-    "description": getSafeKeyFromStorage("More info..."),
+    "description": 'More info...',
     "type": "general",
     "children": [
         {

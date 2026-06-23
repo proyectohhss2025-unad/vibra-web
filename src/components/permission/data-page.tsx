@@ -7,6 +7,7 @@ import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Edit, ToggleLeft } from 'lucide-react';
 import PermissionForm from './permission';
 
 const PermissionDataPage: React.FC = () => {
@@ -82,7 +83,7 @@ const PermissionDataPage: React.FC = () => {
       onRefresh={() => { setCurrentPage(1); loadData(); }}
       onAdd={handleNew}
       addLabel="Agregar Permiso"
-      searchEntity="permission"
+      searchEntity="permissions"
       onSearchData={(results) => setData(results as Permission[])}
       onSearchLoading={setIsLoading}
       emptyMessage="No hay permisos registrados"
@@ -115,9 +116,9 @@ const PermissionDataPage: React.FC = () => {
       ]}
       rowKey={(p) => p._id!}
       actions={[
-        { icon: '✏️', tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
         {
-          icon: '🔁',
+          icon: <ToggleLeft className="w-5 h-5" />,
           tooltip: 'Activar/Desactivar',
           onClick: handleToggleClick,
           color: 'text-amber-500',

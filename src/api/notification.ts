@@ -4,8 +4,6 @@ import axios from 'axios';
 import { Notification } from '@/models/notification.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -28,7 +26,7 @@ export const createNotification = async (notification: Notification) => {
         });
         return response.data.notification;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -45,7 +43,7 @@ export const getNotificationById = async (id: string) => {
 
         return response.data.notification;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -62,7 +60,7 @@ export const getNotificationByName = async (name: string) => {
 
         return response.data.notification;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -72,7 +70,7 @@ export const searchByQuery = async (query: string) => {
         const response = await axios.get(`${configAPI.baseURL}/search?searchTerm=${query}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -82,7 +80,7 @@ export const getAllNotifications = async (currentPage: number, pageSize: number,
         const response = await axios.get(`${configAPI.baseURL}/api/notifications/allByTitle?page=${currentPage}&rows=${pageSize}&title=${title}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -97,7 +95,7 @@ export const getAll = async (currentPage: number, pageSize: number) => {
         return response.data;
         
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return { notifications: [], total: 0 };
     }
 }
@@ -107,7 +105,7 @@ export const markAsRead = async (id: string) => {
         const response = await axios.put(`${configAPI.baseURL}/api/notifications/read/${id}`, { editedBy: user_?.name });
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -117,7 +115,7 @@ export const getCountAllNotifications = async () => {
         const response = await axios.get(`${configAPI.baseURL}/api/notifications/count-all-notifications`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -127,7 +125,7 @@ export const getCountAllNotificationsByDay = async () => {
         const response = await axios.get(`${configAPI.baseURL}/api/notifications/count-all-notifications-by-day`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -140,7 +138,7 @@ export const getUnreadCount = async () => {
   try {
     const token = getSafeKeyFromStorage('token');   
     if (!token) {
-      logger.error('No token found in storage');
+      console.error('No token found in storage');
       return 0;
     }
     const response = await axios.get(`${configAPI.baseURL}/api/notifications/unread/count/1`, {
@@ -151,7 +149,7 @@ export const getUnreadCount = async () => {
     });
     return response.data;
   } catch (error) {
-    logger.error('Error getting unread count:', error);
+    console.error('Error getting unread count:', error);
     return 0;
   }
 };

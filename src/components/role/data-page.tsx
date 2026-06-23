@@ -7,11 +7,12 @@ import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Edit, ToggleLeft } from 'lucide-react';
 import RoleForm from './role';
 
 const RoleDataPage: React.FC = () => {
   const router = useRouter();
-  const { openTab } = useTabs();
+  const { openTab, refreshData } = useTabs();
 
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<Role[]>([]);
@@ -38,6 +39,7 @@ const RoleDataPage: React.FC = () => {
   };
 
   useEffect(() => { loadData(); }, [currentPage, pageSize]);
+  useEffect(() => { loadData(); }, [refreshData]);
 
   const handleEdit = (role: Role) => {
     const id = role?._id ? String(role._id) : '';
@@ -79,14 +81,14 @@ const RoleDataPage: React.FC = () => {
       onRefresh={() => { setCurrentPage(1); loadData(); }}
       onAdd={handleNew}
       addLabel="Agregar Rol"
-      searchEntity="role"
+      searchEntity="roles"
       onSearchData={(results) => setData(results as Role[])}
       onSearchLoading={setIsLoading}
       emptyMessage="No hay roles registrados"
       columns={[
-        { key: 'name', label: 'Nombre', render: (r) => r.name, className: 'min-w-[180px]' },
-        { key: 'description', label: 'Descripción', render: (r) => r.description || '-', className: 'min-w-[250px]' },
-        { key: 'serial', label: 'Serial', render: (r) => r.serial || '-' },
+        { key: 'name', label: 'Nombre', render: (r) => r.name, className: 'min-w-[200px]' },
+        { key: 'description', label: 'Descripción', render: (r) => r.description || '-', className: 'min-w-[300px] w-full' },
+        { key: 'serial', label: 'Serial', render: (r) => r.serial || '-', className: 'w-48 whitespace-nowrap' },
         {
           key: 'status',
           label: 'Estado',
@@ -95,14 +97,14 @@ const RoleDataPage: React.FC = () => {
               {r.isActive !== false ? 'Activo' : 'Inactivo'}
             </span>
           ),
-          className: 'w-24 text-center',
+          className: 'w-16 text-center',
         },
       ]}
       rowKey={(r) => r._id!}
       actions={[
-        { icon: '✏️', tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
         {
-          icon: '🔁',
+          icon: <ToggleLeft className="w-5 h-5" />,
           tooltip: 'Activar/Desactivar',
           onClick: handleToggleClick,
           color: 'text-amber-500',

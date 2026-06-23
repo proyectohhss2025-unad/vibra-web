@@ -8,6 +8,7 @@ import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Edit, Trash2 } from 'lucide-react';
 import ParticipantComponent from './participant';
 
 function toParticipant(r: ParticipantResponse): Participant {
@@ -91,10 +92,6 @@ const ParticipantDataPage: React.FC = () => {
     }
   };
 
-  const handleNew = () => {
-    openTab('/Participante/new', 'Nuevo participante', <ParticipantComponent />);
-  };
-
   return (
     <ListPageLayout
       title="Gestión de Participantes"
@@ -107,8 +104,6 @@ const ParticipantDataPage: React.FC = () => {
       onPageChange={setCurrentPage}
       onPageSizeChange={setPageSize}
       onRefresh={() => { setCurrentPage(1); loadData(); }}
-      onAdd={handleNew}
-      addLabel="Agregar Participante"
       searchEntity="participant"
       onSearchData={(results) => setData(results as Participant[])}
       onSearchLoading={setIsLoading}
@@ -139,9 +134,9 @@ const ParticipantDataPage: React.FC = () => {
       ]}
       rowKey={(p) => p._id!}
       actions={[
-        { icon: '✏️', tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
         {
-          icon: '🗑️',
+          icon: <Trash2 className="w-4 h-4" />,
           tooltip: 'Eliminar',
           onClick: handleDeleteClick,
           color: 'text-red-500',

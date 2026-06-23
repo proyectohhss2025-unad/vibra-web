@@ -3,7 +3,9 @@ import ActiveUsers from '@/components/user/active-user';
 import FloatingFeedbackBtn from '@/components/ui/floating-feedback-btn';
 import { AuthContext, ResolvedPermissions } from '@/services/auth';
 import { useDevice } from '@/services/contexts/device-context';
+import { useTabs } from '@/services/contexts/tabs-context';
 import { FULL_NAME } from '@/utils/constants';
+import { useTranslation } from 'react-i18next';
 import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
 import { LockClosedIcon } from '@heroicons/react/outline';
 import { PanelLeftOpenIcon, PanelRightOpenIcon } from 'lucide-react';
@@ -14,10 +16,17 @@ import { items } from "./sidebar-option";
 import "./sidebar.css";
 import { Toaster } from '@/registry/new-york/ui/toaster';
 import { Card } from '@/registry/new-york/ui/card';
+import ProfileComponent from '@/components/general-dashboard/profile';
 
 const Sidebar = () => {
+    const { t } = useTranslation();
     const { token, otp, handleLogout, resolvedPermissions/*, translates */ } = useContext(AuthContext);
     const { isMobile, isTablet } = useDevice();
+    const { openTab } = useTabs();
+
+    const handleAvatarClick = () => {
+        openTab('/profile', 'Mi Perfil', <ProfileComponent />);
+    };
 
     const [dataMainMenu, setDataMainMenu] = useState<any[]>([]);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -60,21 +69,21 @@ const Sidebar = () => {
             return;
         }
 
-        // Filtrar items del menú según los seriales de permisos del usuario
+        // Filtrar items del menú según los sidebarSerial (PERM-XXXX) de permisos
         const filteredItems = items.filter(item => {
             // Si el item no requiere permiso, mostrarlo
-            if (!item.permissionID) return true;
+            if (!item.sidebarSerial) return true;
 
             // Si tiene hijos, verificar que al menos uno tenga acceso
             if (item.children && item.children.length > 0) {
                 const hasChildWithAccess = item.children.some(
-                    (child: any) => !child.permissionID || resolvedPermissions.serials.includes(child.permissionID)
+                    (child: any) => !child.sidebarSerial || resolvedPermissions.serials.includes(child.sidebarSerial)
                 );
                 if (!hasChildWithAccess) return false;
             }
 
-            // Verificar permiso por serial
-            return resolvedPermissions.serials.includes(item.permissionID);
+            // Verificar permiso por sidebarSerial
+            return resolvedPermissions.serials.includes(item.sidebarSerial);
         });
 
         setDataMainMenu(filteredItems);
@@ -139,9 +148,9 @@ const Sidebar = () => {
                     <button className="w-full hover:text-white flex rounded-md bg-green-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         onClick={handleLogout}>
                         <LockClosedIcon name="layout" style={{ "float": 'left' }} className={`${isCollapsed ? 'h-7 w-7 mr-1 pl-1' : 'h-5 w-6 mr-2'} text-white-500 hover:text-white-800`} color="#EAEAEA" />
-                        {getSafeKeyFromStorage('Sign off')}
+                        {t('nav.signOff')}
                     </button>
-                    {<AuthorInfo isCollapsed={!isCollapsed} />}
+                    {<AuthorInfo isCollapsed={!isCollapsed} onAvatarClick={handleAvatarClick} />}
                 </div>}
             </div>}
             {!isMobile && (
@@ -160,11 +169,11 @@ const Sidebar = () => {
                             <button className="font-semibold text-white hover:text-white flex rounded-md bg-green-700 px-4 py-2 text-sm shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                                 onClick={handleLogout}>
                                 <LockClosedIcon name="layout" style={{ "float": 'left' }} className={`${isCollapsed ? 'h-7 w-7 mr-1 pl-1' : 'h-5 w-6 mr-2'} text-white-500 hover:text-white-800`} color="#EAEAEA" />
-                                {!isCollapsed && getSafeKeyFromStorage('Sign off')}
+                                {!isCollapsed && t('nav.signOff')}
                             </button>
                         </div>}
                     </div>
-                    {isAuthenticated && <AuthorInfo isCollapsed={isCollapsed} />}
+                    {isAuthenticated && <AuthorInfo isCollapsed={isCollapsed} onAvatarClick={handleAvatarClick} />}
                     {!isCollapsed && resolvedPermissions && (
                         <div className="text-xs text-gray-400 mt-1 px-3">
                             {resolvedPermissions.permissions.length} permiso(s) asignado(s)

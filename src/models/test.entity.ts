@@ -13,6 +13,8 @@ export interface Test {
   timeLimit?: number;
   passingScore?: number;
   isActive: boolean;
+  showAtStart?: boolean;
+  showAtEnd?: boolean;
   questions: TestQuestion[];
   tags?: string[];
   version?: number;

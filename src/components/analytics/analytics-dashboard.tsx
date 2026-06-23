@@ -44,7 +44,7 @@ export default function AnalyticsDashboard() {
       if (data) setTotalActivities(data.count ?? 0)
     })
     getCountAllParticipants().then((data) => {
-      if (data) setTotalParticipants(data.count ?? 0)
+      if (data !== null && data !== undefined) setTotalParticipants(typeof data === 'number' ? data : (data as any).count ?? 0)
     })
     getEmotionDistribution(startDateStr, endDateStr, courseId).then((data) => {
       if (Array.isArray(data)) {

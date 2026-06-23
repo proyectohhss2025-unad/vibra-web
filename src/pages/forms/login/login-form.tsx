@@ -1,8 +1,6 @@
 import { authLogin, verifyJwtToken } from '@/api/auth-login';
 import { getConfigById, hasAccessToConfig } from '@/api/config';
-import { getTranslateSeveralTexts } from '@/api/translate';
 import ModalForgotPass from '@/components/layouts/modal/modal-forgot-pass';
-import { arrayToTranslates } from '@/components/layouts/translate/translate-option';
 import OTPInput from '@/components/login/validate-otp';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { User } from '@/models/user.entity';
@@ -61,12 +59,11 @@ const LoginForm: React.FC = () => {
     const { formState: { errors } } = useForm();
     const [showModal, setShowModal] = useState(false);
     const [email, setEmail] = useState('yovanysuarezsilva@gmail.com');
-    const [password, setPassword] = useState('Pb*H7^YEQ!va');
-    const [userName, setUserName] = useState('maya');
+    const [password, setPassword] = useState('');
+    const [userName, setUserName] = useState('');
     const [otp, setOtp] = useState('');
     const [hasError, setHasError] = useState(false);
     const [error, setError] = useState('');
-    const [language, setLanguage] = useState<string>('en');
 
     const router = useRouter();
 
@@ -79,28 +76,6 @@ const LoginForm: React.FC = () => {
         setIsOpen(true);
         localStorage.setItem('tourInLogin', 'true');
     }, []);
-    //#endregion 
-
-    // #region CONFIG AND TRANSLATE 
-    useEffect(() => {
-        const fetchData = async () => {
-            //const configResponse = await getConfigById('66c4282cfae6d4483944cb9e');
-            //if (!configResponse) {
-            //    logger.warn('Config not found');
-            //    return;
-            //}
-            //const hasAccess = await hasAccessToConfig(configResponse._id, '0');
-            //if (hasAccess) {
-            //NOTE: Create a configuration parameter for this specific language heat
-            setLanguage('en');
-            const translates: any = await getTranslateSeveralTexts(arrayToTranslates, language);
-            translates?.forEach((element: any) => {
-                localStorage.setItem(element.originalText, element.translatedText);
-            });
-            //}
-        }
-        fetchData();
-    }, [language/*, user_.documentNumber*/]);
     //#endregion 
 
     useEffect(() => {
@@ -157,9 +132,19 @@ const LoginForm: React.FC = () => {
                 const configResponse = await getConfigById('66509c3a56fa46b3d178e2a9');
                 if (!configResponse) {
                     logger.warn('Configuración no encontrada');
+                    setError('Error de configuración del sistema. Contacta al administrador.');
                     return;
                 }
                 console.log('configResponse._id - objectToken.documentNumber:', configResponse._id, objectToken);
+
+                // Si flag es false → OTP deshabilitado globalmente → acceso directo
+                if (!configResponse.flag) {
+                    logger.info('Validación OTP deshabilitada globalmente (flag=false). Acceso directo.');
+                    await auditLogAction(objectToken?.username, "Inicio de sesión", "Inicio de sesión de usuario", `Se ha realizado un inicio de sesión de parte del usuario: ${objectToken?.username} con rol: ${objectToken?.role?.name}`, clientIp ?? '');
+                    router.push('/home-dashboard');
+                    return;
+                }
+
                 const hasAccess = await hasAccessToConfig(configResponse._id, objectToken.documentNumber);
                 //#endregion 
 
@@ -174,6 +159,7 @@ const LoginForm: React.FC = () => {
                         await auditLogAction(objectToken?.username, "Inicio de sesión", "Inicio de sesión de usuario con validación de OTP", "Se ha realizado un inicio de sesión con validacion de OTP de parte del usuario: " + objectToken.username + " con rol " + objectToken.role?.name, clientIp ?? '');
                     } else {
                         logger.error('No se requiere OTP para su autenticación');
+                        setError('No tienes permisos de acceso al sistema. Contacta al administrador.');
                     }
                 }
             } else {
@@ -248,7 +234,7 @@ const LoginForm: React.FC = () => {
                                                     className="block w-full rounded-md border-0 py-1.5 pl-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
                                                 />*/}
                                                 <div className="flex rounded-md shadow-sm mt-2 ring-1 ring-inset ring-gray-400 focus-within:ring-2 focus-within:ring-inset sm:max-w-md">
-                                                    <span className="flex select-none items-center pl-3 text-gray-600 sm:text-sm pr-2 rounded-l-lg">vibra.net.co/</span>
+                                                    <span className="flex select-none items-center pl-3 text-gray-600 sm:text-sm pr-2 rounded-l-lg">vibraunad.com.co/</span>
                                                     <input data-tour="step-2"
                                                         type="text"
                                                         name="username"
@@ -273,7 +259,7 @@ const LoginForm: React.FC = () => {
                                                     <HoverCard>
                                                         <HoverCardTrigger>
                                                             <Link href="#" onClick={() => setShowModal(true)} className="font-semibold text-blue-600 hover:text-blue-500">
-                                                                {'Olvidaste tu contraseña?'}?
+                                                                {'Olvidaste tu contraseña?'}
                                                             </Link>
                                                         </HoverCardTrigger>
                                                         <HoverCardContent>

@@ -1,43 +1,41 @@
 import { AuthContext } from '@/services/auth';
-import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import Image from 'next/image';
-import { memo, useContext, useEffect, useState } from 'react';
+import { memo, useContext } from 'react';
 import '../styles/author-photo.css';
 import { FULL_NAME } from '../utils/constants';
+import { getAvatarUrl } from '@/utils/avatar';
 
-const AuthorInfoComponent: React.FC<any> = ({ isCollapsed }) => {
-  const user_: any = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
-  const { token, otp, mainCompany } = useContext(AuthContext);
-  const [user, setUser] = useState<any>(user_);
+const AuthorInfoComponent: React.FC<any> = ({ isCollapsed, onAvatarClick }) => {
+  const { user, token, mainCompany } = useContext(AuthContext);
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-
-  useEffect(() => {
-    setIsAuthenticated(!!token);
-    setUser(user_);
-  }, [token]);
-
-  if (!isAuthenticated) {
+  if (!token || !user) {
     return null;
   }
 
   return (
-    <div className="author-photo-container mt-4 border-b border-gray-300 pb-4 mx-1">
-      <Image
-        src={`/avatars/${user?.avatar}`}
-        alt={FULL_NAME}
-        width={isCollapsed ? 180 : 400}
-        height={isCollapsed ? 150 : 300}
-        className={`img-fluid ${isCollapsed ? 'pl-1' : ''}`}
-      />
+    <div className="author-photo-container mt-2 mb-2 border-b border-gray-200 pb-3 mx-2">
+      <button
+        type="button"
+        onClick={onAvatarClick}
+        className="flex-shrink-0 focus:outline-none"
+        title="Ver mi perfil"
+      >
+        <Image
+          src={getAvatarUrl(user?.avatar)}
+          alt={FULL_NAME}
+          width={48}
+          height={48}
+          className="cursor-pointer"
+        />
+      </button>
       {!isCollapsed && <div className="author-info">
-        <div className='flex text-gray-600 mt-1 text-sm justify-start font-semibold'>{user?.name}</div>
-        <div className='flex mt-1 text-xs justify-start'>Usuario: {user?.username}</div>
-        <div className='flex text-gray-600 border-t-1 mt-1 text-xs justify-start font-medium'>{user?.role?.name}</div>
-        <div className='flex text-gray-600 border-t-1 mt-1 text-xs justify-start'>{/*user?.company?.name*/}...</div>
+        <div className='text-gray-800 text-sm font-semibold truncate'>{user?.name}</div>
+        <div className='text-gray-500 text-xs truncate'>@{user?.username}</div>
+        <div className='text-gray-600 text-xs font-medium truncate'>{user?.role?.name}</div>
+        <div className='text-gray-400 text-[10px] truncate'>{mainCompany?.name || user?.company?.name || ''}</div>
       </div>}
     </div>
   );
 };
 
-export default memo(AuthorInfoComponent);   
+export default memo(AuthorInfoComponent);

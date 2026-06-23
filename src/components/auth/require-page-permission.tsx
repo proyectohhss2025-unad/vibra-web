@@ -7,7 +7,7 @@ import React, { useContext, useEffect, useState } from 'react';
 interface RequirePagePermissionProps {
   /**
    * Serial del permiso requerido para acceder a la página.
-   * Ej: '16' para Actividades, '8' para Emociones, etc.
+   * Ej: 'PERM-0007' para Actividades, 'PERM-0011' para Emociones, etc.
    */
   requiredSerial: string;
   children: React.ReactNode;

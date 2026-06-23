@@ -7,6 +7,7 @@ import Navbar from '../components/navbar';
 import Footer from '../components/footer';
 import ScrollReveal from '../components/scroll-reveal';
 import QRCode from 'qrcode';
+import { config } from '@/config/config';
 
 export default function DownloadAppPage() {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -88,11 +89,8 @@ export default function DownloadAppPage() {
                   <span className="text-xs text-vibra-body">Disponible en Google Play</span>
                 </div>
                 <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    alert('APK — próximamente disponible');
-                  }}
+                  href={config[process.env.NODE_ENV === 'production' ? 'production' : 'development'].apkDownloadPath}
+                  download
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-vibra-blue text-white font-semibold text-sm shadow-lg hover:bg-vibra-blue-light transition-all self-start"
                 >
                   <Download className="w-4 h-4" />

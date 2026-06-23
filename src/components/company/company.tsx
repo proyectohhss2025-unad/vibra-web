@@ -8,8 +8,11 @@ import { User } from '@/models/user.entity';
 import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
 import FormPageLayout from '@/components/ui/form-page-layout';
-import { ArrowCircleLeftIcon, SaveAsIcon } from '@heroicons/react/outline';
-import { CheckCircleIcon, ClipboardListIcon, PlusCircleIcon, StarIcon, SupportIcon, UserCircleIcon, UserGroupIcon } from '@heroicons/react/solid';
+import { useVibraForm } from '@/hooks/useVibraForm';
+import { CompanySchema, type CompanyFormData } from '@/schemas';
+import FormField from '@/components/forms/FormField';
+import PhoneInput from '@/components/forms/PhoneInput';
+import { ClipboardListIcon, UserCircleIcon, StarIcon, SupportIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
 import { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -30,22 +33,7 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
     const currentTabId = resolvedCompanyId ? `/Company/${resolvedCompanyId}` : '/Company/new';
     const isEditing = !!resolvedCompanyId;
 
-    const [validateForm, setValidateForm] = useState<boolean>(false);
     const [companyID, setCompanyID] = useState<string>('');
-    const [companyName, setCompanyName] = useState<string>('');
-    const [companySlogan, setCompanySlogan] = useState<string>('');
-    const [companyNit, setCompanyNit] = useState<string>('');
-    const [companyAddress, setCompanyAddress] = useState<string>('');
-    const [companyPhoneNumber, setCompanyPhoneNumber] = useState<string>('');
-    const [companyBillingRangeNumber, setCompanyBillingRangeNumber] = useState<string>('');
-    const [companyEmail, setCompanyEmail] = useState<string>('');
-    const [companyManagerDataName, setCompanyManagerDataName] = useState<string>('');
-    const [companyManagerDataDocumentType, setCompanyManagerDataDocumentType] = useState<any>();
-    const [companyManagerDataDocument, setCompanyManagerDataDocument] = useState<string>('');
-    const [companyManagerDataPhoneNumber, setCompanyManagerDataPhoneNumber] = useState<string>('');
-    const [companyManagerDataEmail, setCompanyManagerDataEmail] = useState<string>('');
-    const [companyUserAdmin, setCompanyUserAdmin] = useState<any>();
-    const [companyIsMain, setCompanyIsMain] = useState<boolean>(false);
     const [activeTab, setActiveTab] = useState('company');
     const [labelSelectedDocumentType, setLabelSelectedDocumentType] = useState<string>('Select type');
     const [idDocumentTypeSelected, setIdDocumentTypeSelected] = useState<string>('');
@@ -54,34 +42,26 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
     const [valUser, setValUser] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [success, setSuccess] = useState('');
 
-    const companyClean: Company = {
-        _id: '',
+    const { register, handleSubmit, errors, reset, setValue, watch } = useVibraForm(CompanySchema, {
         name: '',
         slogan: '',
-        email: '',
         nit: '',
         address: '',
         phoneNumber: '',
-        managerData: {
-            name: '',
-            documentType: {} as unknown as DocumentType,
-            document: '',
-            email: '',
-            phoneNumber: '',
-        },
-        createdAt: new Date(),
-        createdBy: '',
-        userAdmin: {} as unknown as User,
-        modules: {
-            billing: {
-                seriesCurrentBillingRange: ''
-            }
-        },
-        isMain: false
-    };
+        email: '',
+        billingRangeNumber: '',
+        isMain: false,
+        managerName: '',
+        managerDocumentType: '',
+        managerDocument: '',
+        managerEmail: '',
+        managerPhoneNumber: '',
+        userAdmin: '',
+    });
 
-    const [company, setCompany] = useState<Company>(companyClean);
+    const watchIsMain = watch('isMain');
 
     // Auth check
     useEffect(() => {
@@ -107,91 +87,100 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
         fetchData();
     }, []);
 
-    // Load company data for editing
+    // Cargar datos de la compañía para edición (independiente de document types)
     useEffect(() => {
-        const getDataCompany = async () => {
+        if (!isEditing || !resolvedCompanyId) return;
+
+        const loadCompany = async () => {
             try {
+                setCompanyID(resolvedCompanyId);
                 const responseCompany: any = await getCompanyById(resolvedCompanyId);
+
                 if (responseCompany?._id) {
-                    setCompany(responseCompany);
-                    setCompanyName(responseCompany?.name);
-                    setCompanySlogan(responseCompany?.slogan);
-                    setCompanyNit(responseCompany?.nit);
-                    setCompanyAddress(responseCompany?.address);
-                    setCompanyPhoneNumber(responseCompany?.phoneNumber);
-                    setCompanyEmail(responseCompany?.email);
-                    setCompanyManagerDataName(responseCompany?.managerData?.name);
-                    setCompanyManagerDataDocumentType(responseCompany?.managerData?.documentType);
-                    setCompanyManagerDataDocument(responseCompany?.managerData?.document);
-                    setCompanyManagerDataEmail(responseCompany?.managerData?.email);
-                    setCompanyManagerDataPhoneNumber(responseCompany?.managerData?.phoneNumber);
-                    setCompanyBillingRangeNumber(responseCompany?.modules?.billing?.seriesCurrentBillingRange);
-                    setCompanyUserAdmin(responseCompany?.userAdmin?._id);
-                    setCompanyIsMain(responseCompany?.isMain);
+                    reset({
+                        name: responseCompany?.name || '',
+                        slogan: responseCompany?.slogan || '',
+                        nit: responseCompany?.nit || '',
+                        address: responseCompany?.address || '',
+                        phoneNumber: String(responseCompany?.phoneNumber ?? ''),
+                        email: responseCompany?.email || '',
+                        billingRangeNumber: responseCompany?.modules?.billing?.seriesCurrentBillingRange || '',
+                        isMain: responseCompany?.isMain || false,
+                        managerName: responseCompany?.managerData?.name || '',
+                        managerDocumentType: responseCompany?.managerData?.documentType?._id || '',
+                        managerDocument: responseCompany?.managerData?.document || '',
+                        managerEmail: responseCompany?.managerData?.email || '',
+                        managerPhoneNumber: String(responseCompany?.managerData?.phoneNumber ?? ''),
+                        userAdmin: responseCompany?.userAdmin?._id || '',
+                    });
+
                     setValUser(responseCompany?.userAdmin?.documentNumber);
                     setUser([responseCompany?.userAdmin]);
                     setIdDocumentTypeSelected(responseCompany?.managerData?.documentType?._id);
-
-                    const selectedOptionDocumentType: any = optionsDocumentType.find(
-                        (option) => option._id === responseCompany?.managerData?.documentType?._id
-                    );
-                    setLabelSelectedDocumentType(selectedOptionDocumentType?.name);
                 }
             } catch (error: any) {
-                toast.error(error.message);
+                toast.error('Error al cargar los datos de la institución');
             }
         };
 
-        if (isEditing && optionsDocumentType.length > 0) {
-            setCompanyID(resolvedCompanyId);
-            getDataCompany();
-        }
-    }, [resolvedCompanyId, isEditing, optionsDocumentType.length]);
+        loadCompany();
+    }, [isEditing, resolvedCompanyId]); // Sin depender de optionsDocumentType
 
-    // Validate form
+    // Actualizar el label del tipo de documento cuando se carguen las opciones
     useEffect(() => {
-        if (companyName && companySlogan && companyNit && companyEmail && companyPhoneNumber && companyAddress && companyUserAdmin && companyBillingRangeNumber) {
-            setValidateForm(true);
-        } else {
-            setValidateForm(false);
+        if (idDocumentTypeSelected && optionsDocumentType.length > 0) {
+            const selected = optionsDocumentType.find(
+                (option) => option._id === idDocumentTypeSelected
+            );
+            if (selected) {
+                setLabelSelectedDocumentType(selected.name);
+            }
         }
-    }, [companyName, companySlogan, companyNit, companyEmail, companyPhoneNumber, companyAddress, companyUserAdmin, companyBillingRangeNumber]);
+    }, [optionsDocumentType, idDocumentTypeSelected]);
 
     // Sync user selection
     useEffect(() => {
-        if (user[0]?._id !== '') {
+        if (user[0]?._id && user[0]?._id !== '') {
             setValUser(user[0]?.documentNumber);
             setCompanyUserAdmin(user[0]?._id);
+            setValue('userAdmin', user[0]?._id);
         }
-    }, [user[0]?._id]);
+    }, [user[0]?._id, setValue]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validateForm) {
-            toast.warning('Complete todos los campos obligatorios');
-            return;
-        }
+    const setCompanyUserAdmin = (id: string) => {
+        setValue('userAdmin', id);
+    };
 
+    const handleFormSubmit = async (data: CompanyFormData) => {
         setIsSubmitting(true);
 
         const companyData = {
-            companyID, companySlogan, companyName, companyNit, companyAddress, companyPhoneNumber,
-            companyEmail, companyUserAdmin, companyBillingRangeNumber, companyIsMain
+            companyID,
+            companySlogan: data.slogan,
+            companyName: data.name,
+            companyNit: data.nit,
+            companyAddress: data.address,
+            companyPhoneNumber: Number(data.phoneNumber.replace(/\D/g, '')) || 0,
+            companyEmail: data.email,
+            companyUserAdmin: data.userAdmin,
+            companyBillingRangeNumber: data.billingRangeNumber,
+            companyIsMain: data.isMain,
         };
 
         const companyManagerData = {
-            name: companyManagerDataName,
-            documentType: companyManagerDataDocumentType,
-            document: companyManagerDataDocument,
-            email: companyManagerDataEmail,
-            phoneNumber: companyManagerDataPhoneNumber
+            name: data.managerName,
+            documentType: idDocumentTypeSelected || data.managerDocumentType,
+            document: data.managerDocument,
+            email: data.managerEmail,
+            phoneNumber: data.managerPhoneNumber,
         };
 
         try {
             const companyResponse = await createCompany(companyData, companyManagerData);
             if (companyResponse) {
-                toast.success('Institución guardada exitosamente');
-                setTimeout(() => closeTabWithRefresh(currentTabId, true), 1000);
+                const msg = isEditing ? 'Institución actualizada exitosamente' : 'Institución creada exitosamente';
+                setSuccess(msg);
+                setTimeout(() => closeTabWithRefresh(currentTabId, true), 1500);
             } else {
                 toast.error('Error al guardar la institución');
             }
@@ -207,22 +196,28 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
     };
 
     const handleClean = () => {
+        reset({
+            name: '',
+            slogan: '',
+            nit: '',
+            address: '',
+            phoneNumber: '',
+            email: '',
+            billingRangeNumber: '',
+            isMain: false,
+            managerName: '',
+            managerDocumentType: '',
+            managerDocument: '',
+            managerEmail: '',
+            managerPhoneNumber: '',
+            userAdmin: '',
+        });
         setCompanyID('');
-        setCompany(companyClean);
-        setCompanyName('');
-        setCompanyNit('');
-        setCompanyAddress('');
-        setCompanyPhoneNumber('');
-        setCompanyEmail('');
-        setCompanyManagerDataName('');
-        setCompanyManagerDataDocumentType({});
-        setCompanyManagerDataDocument('');
-        setCompanyManagerDataEmail('');
-        setCompanyManagerDataPhoneNumber('');
         setCompanyUserAdmin('');
-        setCompanyBillingRangeNumber('');
-        setCompanySlogan('');
-        setCompanyIsMain(false);
+        setValUser('');
+        setUser([]);
+        setIdDocumentTypeSelected('');
+        setLabelSelectedDocumentType('Select type');
         window.scrollTo(0, 0);
     };
 
@@ -234,17 +229,35 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
         if (!option) return;
         setLabelSelectedDocumentType(option?.label);
         setIdDocumentTypeSelected(option?._id);
-        setCompanyManagerDataDocumentType(option?._id);
+        setValue('managerDocumentType', option?._id);
     };
 
     const renderOption = ({ label }: { label: string }) => label;
+
+    if (success) {
+        return (
+            <div className="test-container container mx-auto px-4 py-8">
+                <div className="flex flex-col items-center justify-center py-12">
+                    <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+                            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">¡Operación exitosa!</h3>
+                        <p className="text-sm text-gray-500">{success}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <FormPageLayout
             title={isEditing ? 'Editar Institución' : 'Nueva Institución'}
             isEditing={isEditing}
             isSubmitting={isSubmitting}
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit(handleFormSubmit)}
             onCancel={handleCancel}
         >
             <div className="bg-white shadow-md rounded-lg p-6 mb-6">
@@ -292,56 +305,69 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
                         </div>
                     </div>
                     <div className="ml-auto flex items-center pb-2">
-                        <ToggleSwitch initialValue={companyIsMain} label="Principal" handleChange={setCompanyIsMain} />
+                        <ToggleSwitch initialValue={watchIsMain} label="Principal" handleChange={(val: boolean) => setValue('isMain', val)} />
                     </div>
                 </div>
 
                 {activeTab === 'company' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
-                            <input type="text" id="companyName" value={companyName}
-                                onChange={(e) => setCompanyName(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="companyNit" className="block text-sm font-medium text-gray-700 mb-1">NIT</label>
-                            <input type="text" id="companyNit" value={companyNit}
-                                onChange={(e) => setCompanyNit(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="companySlogan" className="block text-sm font-medium text-gray-700 mb-1">Slogan</label>
-                            <input type="text" id="companySlogan" value={companySlogan}
-                                onChange={(e) => setCompanySlogan(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" id="companyEmail" value={companyEmail}
-                                onChange={(e) => setCompanyEmail(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="companyPhoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                            <input type="text" id="companyPhoneNumber" value={companyPhoneNumber}
-                                onChange={(e) => setCompanyPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="companyBillingRangeNumber" className="block text-sm font-medium text-gray-700 mb-1">Rango facturación</label>
-                            <input type="text" id="companyBillingRangeNumber" value={companyBillingRangeNumber}
-                                onChange={(e) => setCompanyBillingRangeNumber(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
+                        <FormField
+                            label="Nombre completo"
+                            name="name"
+                            register={register('name')}
+                            error={errors.name}
+                            placeholder="Nombre de la institución"
+                        />
+                        <FormField
+                            label="NIT"
+                            name="nit"
+                            register={register('nit')}
+                            error={errors.nit}
+                            placeholder="NIT"
+                        />
+                        <FormField
+                            label="Slogan"
+                            name="slogan"
+                            register={register('slogan')}
+                            error={errors.slogan}
+                            placeholder="Slogan"
+                        />
+                        <FormField
+                            label="Email"
+                            name="email"
+                            type="email"
+                            register={register('email')}
+                            error={errors.email}
+                            placeholder="correo@ejemplo.com"
+                        />
+                        <PhoneInput
+                            label="Teléfono"
+                            value={watch('phoneNumber')}
+                            onChange={(val) => setValue('phoneNumber', val)}
+                        />
+                        <FormField
+                            label="Rango facturación"
+                            name="billingRangeNumber"
+                            register={register('billingRangeNumber')}
+                            error={errors.billingRangeNumber}
+                            placeholder="Rango de facturación"
+                        />
                         <div className="md:col-span-2">
-                            <label htmlFor="companyAddress" className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                            <input type="text" id="companyAddress" value={companyAddress}
-                                onChange={(e) => setCompanyAddress(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                            <FormField
+                                label="Dirección"
+                                name="address"
+                                register={register('address')}
+                                error={errors.address}
+                                placeholder="Dirección"
+                            />
                         </div>
+                        {errors.userAdmin && (
+                            <div className="md:col-span-2">
+                                <span className="text-xs text-red-500">{errors.userAdmin.message}</span>
+                            </div>
+                        )}
                         <div className="md:col-span-2 border-t border-gray-200 pt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Usuario administrador</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Usuario administrador *</label>
                             <SearchUser isOpen={showModal} onClose={handleCloseModal} setUser={setUser} disabled={false} val={valUser}>
                                 {user.length > 1 && (
                                     <div className="relative mt-1">
@@ -367,20 +393,20 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
 
                 {activeTab === 'manager' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            label="Nombre"
+                            name="managerName"
+                            register={register('managerName')}
+                            error={errors.managerName}
+                            placeholder="Nombre del representante"
+                        />
+                        <PhoneInput
+                            label="Teléfono"
+                            value={watch('managerPhoneNumber')}
+                            onChange={(val) => setValue('managerPhoneNumber', val)}
+                        />
                         <div>
-                            <label htmlFor="companyManagerDataName" className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                            <input type="text" id="companyManagerDataName" value={companyManagerDataName}
-                                onChange={(e) => setCompanyManagerDataName(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="companyManagerDataPhoneNumber" className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                            <input type="text" id="companyManagerDataPhoneNumber" value={companyManagerDataPhoneNumber}
-                                onChange={(e) => setCompanyManagerDataPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
-                        <div>
-                            <label htmlFor="documentType" className="block text-sm font-medium text-gray-700 mb-1">Tipo de documento</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de documento</label>
                             <DropdownMenuButton
                                 label={labelSelectedDocumentType}
                                 options={optionsDocumentType}
@@ -389,17 +415,22 @@ const CompanyComponent: React.FC<CompanyComponentProps> = ({ companyId }) => {
                                 valueSelected={labelSelectedDocumentType}
                             />
                         </div>
-                        <div>
-                            <label htmlFor="companyManagerDataDocument" className="block text-sm font-medium text-gray-700 mb-1">Número de documento</label>
-                            <input type="text" id="companyManagerDataDocument" value={companyManagerDataDocument}
-                                onChange={(e) => setCompanyManagerDataDocument(e.target.value.replace(/[^0-9]/g, ''))}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                        </div>
+                        <FormField
+                            label="Número de documento"
+                            name="managerDocument"
+                            register={register('managerDocument')}
+                            error={errors.managerDocument}
+                            placeholder="Documento"
+                        />
                         <div className="md:col-span-2">
-                            <label htmlFor="companyManagerDataEmail" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" id="companyManagerDataEmail" value={companyManagerDataEmail}
-                                onChange={(e) => setCompanyManagerDataEmail(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                            <FormField
+                                label="Email"
+                                name="managerEmail"
+                                type="email"
+                                register={register('managerEmail')}
+                                error={errors.managerEmail}
+                                placeholder="correo@ejemplo.com"
+                            />
                         </div>
                     </div>
                 )}

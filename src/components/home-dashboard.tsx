@@ -23,9 +23,8 @@ import { UserNav } from "./general-dashboard/user-nav"
 
 const HomeDashboardComponent: React.FC = () => {
     const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
-    const { token, otp } = useContext(AuthContext);
+    const { token, otp, resolvedPermissions } = useContext(AuthContext);
     const [data, setData] = useState<any>([]);
-    const [labelData, setLabelData] = useState<any>();
     const [, setIsAuthenticated] = useState<boolean>(!!token && !!otp);
 
     const router = useRouter();
@@ -48,20 +47,36 @@ const HomeDashboardComponent: React.FC = () => {
         setIsAuthenticated(!!token && !!otp);
     }, [token, otp]);
 
-    useEffect(() => {
-        setLabelData(dataLabel_());
-    }, [user_, token]);
+    const formatFilterDate = (date: any): string => {
+        if (!date) return 'Sin filtro';
+        try {
+            return formatDate(date, FORMAT_DATE_SHORT);
+        } catch {
+            return 'Fecha inválida';
+        }
+    };
 
-    const dataLabel_ = () => {
-        return (
-            <div>
-                <p>Año: {yearFilter} </p>
-                <p>Fecha Inicio: {formatDate(dateInitFilter, FORMAT_DATE_SHORT)}</p>
-                <p>Fecha Fin: {formatDate(dateEndFilter, FORMAT_DATE_SHORT)}</p>
-                <p>Usuarios: {participantFilter?.label}</p>
+    // Calcular labelData directamente en el render (sin estado ni efecto)
+    const filterLabel = (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 w-20">Año:</span>
+                <span className="text-sm font-semibold text-gray-800">{yearFilter || 'Todos'}</span>
             </div>
-        )
-    }
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 w-20">Desde:</span>
+                <span className="text-sm text-gray-800">{formatFilterDate(dateInitFilter)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 w-20">Hasta:</span>
+                <span className="text-sm text-gray-800">{formatFilterDate(dateEndFilter)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-500 w-20">Usuario:</span>
+                <span className="text-sm text-gray-800">{participantFilter?.label || 'Todos'}</span>
+            </div>
+        </div>
+    );
 
     return (
         <>
@@ -79,7 +94,7 @@ const HomeDashboardComponent: React.FC = () => {
                 {/* INFO: Menu de navegación superior */}
                 <div className="border-b bg-white rounded-t-md">
                     <div className="flex h-16 items-center mr-4">
-                        <TeamSwitcher getDataFilterByParticipant={() => { }} className="ml-2" />
+                        <TeamSwitcher />
                         <MainNav className="mx-4" />
                         <React.StrictMode>
                             <OfflineSync apiUrl="https://example.com/api/sync" isIcon={true} />
@@ -94,7 +109,7 @@ const HomeDashboardComponent: React.FC = () => {
                                     <div className="space-y-1">
                                         <h4 className="text-sm font-semibold">Datos en el filtro</h4>
                                         <p className="text-sm">
-                                            {labelData}
+                                            {filterLabel}
                                         </p>
                                     </div>
                                 </div>
@@ -102,7 +117,7 @@ const HomeDashboardComponent: React.FC = () => {
                         </HoverCard>
 
                         <div className="ml-auto flex items-center space-x-4">
-                            <SearchInAllPage isOpen={true} val="" onClose={() => { }} setData={setData} disabled={false}  >
+                            <SearchInAllPage isOpen={true} val="" onClose={() => { }} setData={setData} disabled={false} resolvedPermissions={resolvedPermissions} >
                                 {data.length > 1 && (
                                     <div className="absolute flex col-span-1 mt-1">
                                         <ul className="z-[100] bg-white border rounded-md shadow-sm w-full">

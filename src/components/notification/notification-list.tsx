@@ -1,5 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import { getAllNotifications, markAsRead } from '@/api/notification';
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
 import { DotsVerticalIcon, ViewGridAddIcon } from '@heroicons/react/solid';
 import { BellIcon } from '@radix-ui/react-icons';
 import { CheckCheckIcon } from 'lucide-react';
@@ -9,6 +9,7 @@ import { twMerge } from 'tailwind-merge';
 import { Badge } from '../ui/badge';
 
 const NotificationListItem: React.FC<any> = ({ notification, setNotifications, colorIcon }) => {
+  const { t } = useTranslation();
   const [showTooltip, setShowTooltip] = useState(false);
   const router = useRouter();
   const c = twMerge('flex cursor-pointer items-center py-2', notification?.serial % 2 === 0 ? 'bg-gray-100' : 'bg-white');
@@ -69,7 +70,7 @@ const NotificationListItem: React.FC<any> = ({ notification, setNotifications, c
                   onClick={handleLinkToActivity}
                   className={`bg-blue-400 w-full hover:bg-blue-600 rounded-md px-2 py-2 pl-8 text-xs text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600`}
                 >
-                  {getSafeKeyFromStorage('View activity')}
+                  {t('common.viewActivity')}
                 </button>
               </div>
             </li>

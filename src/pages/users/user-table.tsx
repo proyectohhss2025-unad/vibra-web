@@ -6,7 +6,7 @@ import React from 'react';
 const UserTablePage: React.FC = () => {
   return (
     <AuthProvider>
-      <RequirePagePermission requiredSerial="9">
+      <RequirePagePermission requiredSerial="PERM-0001">
         <main className="flex min-h-screen flex-col items-center justify-between p-2 mb-14">
           <UserDataPage />
         </main>

@@ -1,5 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import { forgotPassword } from '@/api/password-reset';
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
 import { CheckIcon, LockOpenIcon, XCircleIcon } from '@heroicons/react/solid';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -10,6 +10,7 @@ interface Props {
 }
 
 const ForgotPassword: React.FC<Props> = ({ email_ }) => {
+    const { t } = useTranslation();
     const [email, setEmail] = useState(email_);
     const [message, setMessage] = useState('');
     const [isSuccess, setIsSuccess] = useState(false);
@@ -86,7 +87,7 @@ const ForgotPassword: React.FC<Props> = ({ email_ }) => {
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium leading-5 text-gray-700 mb-3">
-                            {getSafeKeyFromStorage('Email address')}
+                            {t('auth.emailAddress')}
                         </label>
                         <div className="mt-1 rounded-md shadow-sm">
                             <input

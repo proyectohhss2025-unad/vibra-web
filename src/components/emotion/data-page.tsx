@@ -2,30 +2,23 @@
 
 import { getAll, toggleActive } from '@/api/emotion';
 import { Emotion } from '@/models/emotion.entity';
-import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
-import { PlusCircleIcon, RefreshIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import ModalConfirm from '../layouts/modal/modal-confirm';
-import Search from '../search/search';
-import Pagination from '../ui/table/pagination';
-import CurrentDateTime from '../utils/current-datetime';
+import { Edit, ToggleLeft } from 'lucide-react';
+import ListPageLayout from '@/components/ui/list-page-layout';
 import EmotionComponent from './emotion';
-import '../test/test.css';
 
 const EmotionDataPage: React.FC = () => {
-    const { token } = useContext(AuthContext);
     const router = useRouter();
-    const { openTab, closeTab, refreshData } = useTabs();
+    const { openTab, refreshData } = useTabs();
 
     const [data, setData] = useState<Emotion[]>([]);
     const [total, setTotal] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(12);
     const [isLoading, setIsLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; emotion: Emotion | null }>({
         show: false,
         emotion: null,
@@ -46,21 +39,6 @@ const EmotionDataPage: React.FC = () => {
     };
 
     useEffect(() => { loadData(); }, [currentPage, pageSize, refreshData]);
-
-    useEffect(() => {
-        if (!token) router.push('/layout');
-    }, [token, router]);
-
-    const handleSearch = (term: string) => {
-        setSearchTerm(term);
-        setCurrentPage(1);
-    };
-
-    useEffect(() => {
-        if (searchTerm === '') return;
-        const timer = setTimeout(() => loadData(), 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
     const handleNew = () => {
         openTab('/Emocion/new', 'Nueva emoción', <EmotionComponent />);
@@ -92,119 +70,82 @@ const EmotionDataPage: React.FC = () => {
     const formatIntensity = (val?: number) => val ?? '-';
 
     return (
-        <>
-            <div className="hidden flex-col md:flex w-full mt-0">
-                <div className="hidden flex-col w-full md:flex mt-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-3xl font-bold tracking-tight ml-3">Gestión de Emociones</h2>
-                        <div className="flex items-center space-x-2">
-                            <div className="bg-white rounded-md px-2 pl-2 mb-0 pb-1">
-                                <CurrentDateTime />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-md w-full mt-3 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 className="text-xl font-semibold">Lista de Emociones</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Gestione las emociones del sistema, configure nombres, categorías e intensidades.
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <Search
-                                isOpen={false}
-                                onClose={() => { }}
-                                setData={(results: any) => setData(results)}
-                                entity="emotion"
-                                setIsLoading={setIsLoading}
-                            >
-                                <RefreshIcon
-                                    className="h-7 w-7 text-blue-600 cursor-pointer hover:text-green-500"
-                                    onClick={() => { setCurrentPage(1); loadData(); }}
-                                />
-                            </Search>
-                            <button onClick={handleNew}
-                                className="flex rounded-md bg-blue-600 w-full px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500">
-                                <PlusCircleIcon className="h-5 w-8 text-white" />
-                                Agregar Emoción
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="uppercase tracking-wider border-b-2">
-                                <tr>
-                                    <th className="px-3 py-2">Nombre</th>
-                                    <th className="px-3 py-2">Categoría</th>
-                                    <th className="px-3 py-2">Intensidad</th>
-                                    <th className="px-3 py-2">Icono</th>
-                                    <th className="px-3 py-2">Estado</th>
-                                    <th className="px-3 py-2">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-8 text-gray-500">
-                                            {isLoading ? 'Cargando...' : 'No hay emociones registradas'}
-                                        </td>
-                                    </tr>
-                                )}
-                                {data.map((emotion) => (
-                                    <tr key={emotion._id} className="hover:bg-blue-50 border-b">
-                                        <td className="px-3 py-2 font-medium">{emotion.name}</td>
-                                        <td className="px-3 py-2">{formatCategory(emotion.category)}</td>
-                                        <td className="px-3 py-2">{formatIntensity(emotion.intensity)}</td>
-                                        <td className="px-3 py-2">{emotion.icono || '-'}</td>
-                                        <td className="px-3 py-2">
-                                            <span className={emotion.isActive ? 'badge-active' : 'badge-inactive'}>
-                                                {emotion.isActive ? 'Activo' : 'Inactivo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div className="flex items-center space-x-2">
-                                                <button onClick={() => handleEdit(emotion)}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium" title="Editar">
-                                                    ✏️
-                                                </button>
-                                                <button onClick={() => handleToggleClick(emotion)}
-                                                    className="text-amber-500 hover:text-amber-700 text-sm font-medium"
-                                                    title={emotion.isActive ? 'Desactivar' : 'Activar'}>
-                                                    🔁
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <Pagination
-                        currentPage={currentPage}
-                        pageSize={pageSize}
-                        totalItems={total}
-                        onPageChange={setCurrentPage}
-                        setPageSize={setPageSize}
-                    />
-                </div>
-            </div>
-
-            <ModalConfirm
-                isOpen={deleteConfirm.show}
-                onClose={() => setDeleteConfirm({ show: false, emotion: null })}
-                onConfirm={handleToggleConfirm}
-                title={deleteConfirm.emotion?.isActive ? 'Desactivar Emoción' : 'Activar Emoción'}
-                message={`¿Está seguro de ${deleteConfirm.emotion?.isActive ? 'desactivar' : 'activar'} la emoción "${deleteConfirm.emotion?.name}"?`}
-                confirmText={deleteConfirm.emotion?.isActive ? 'Desactivar' : 'Activar'}
-                cancelText="Cancelar"
-                variant={deleteConfirm.emotion?.isActive ? 'danger' : 'warning'}
-            />
-        </>
+        <ListPageLayout
+            title="Gestión de Emociones"
+            subtitle="Gestione las emociones del sistema, configure nombres, categorías e intensidades."
+            data={data}
+            total={total}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            isLoading={isLoading}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            onRefresh={() => { setCurrentPage(1); loadData(); }}
+            onAdd={handleNew}
+            addLabel="Agregar Emoción"
+            searchEntity="emotions"
+            onSearchData={(results) => setData(results as Emotion[])}
+            onSearchLoading={setIsLoading}
+            emptyMessage="No hay emociones registradas"
+            columns={[
+                { key: 'name', label: 'Nombre', render: (e: Emotion) => e.name, className: 'font-medium w-36' },
+                { key: 'category', label: 'Categoría', render: (e) => formatCategory(e.category), className: 'w-20' },
+                { key: 'intensity', label: 'Intensidad', render: (e) => formatIntensity(e.intensity), className: 'w-14 text-center' },
+                { key: 'icon', label: 'Icono', render: (e) => e.icono || '-', className: 'w-14 text-center' },
+                {
+                    key: 'description',
+                    label: 'Descripción',
+                    render: (e) => (
+                        <span className="block truncate max-w-[220px]" title={e.description || ''}>
+                            {e.description || '-'}
+                        </span>
+                    ),
+                    className: 'min-w-[150px] w-56',
+                },
+                {
+                    key: 'orientationNote',
+                    label: 'Nota orientación',
+                    render: (e) => (
+                        <span className="block truncate max-w-[200px]" title={e.orientationNote || ''}>
+                            {e.orientationNote || '-'}
+                        </span>
+                    ),
+                    className: 'min-w-[140px] w-52',
+                },
+                {
+                    key: 'status',
+                    label: 'Estado',
+                    render: (e) => (
+                        <span className={e.isActive ? 'badge-active' : 'badge-inactive'}>
+                            {e.isActive ? 'Activo' : 'Inactivo'}
+                        </span>
+                    ),
+                    className: 'w-24 text-center',
+                },
+            ]}
+            rowKey={(e) => e._id!}
+            actions={[
+                { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+                {
+                    icon: <ToggleLeft className="w-5 h-5" />,
+                    tooltip: 'Activar/Desactivar',
+                    onClick: handleToggleClick,
+                    color: 'text-amber-500',
+                },
+            ]}
+            deleteConfirm={
+                deleteConfirm.show
+                    ? {
+                          show: true,
+                          title: deleteConfirm.emotion?.isActive ? 'Desactivar Emoción' : 'Activar Emoción',
+                          message: `¿Está seguro de ${deleteConfirm.emotion?.isActive ? 'desactivar' : 'activar'} la emoción "${deleteConfirm.emotion?.name}"?`,
+                          variant: deleteConfirm.emotion?.isActive ? 'danger' : 'warning',
+                          onConfirm: handleToggleConfirm,
+                          onClose: () => setDeleteConfirm({ show: false, emotion: null }),
+                      }
+                    : null
+            }
+        />
     );
 };
 

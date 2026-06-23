@@ -1,8 +1,11 @@
 'use client';
 
-import { create, getById, update, CreateParticipantPayload, UpdateParticipantPayload } from '@/api/participant';
+import { create, getById, update, UpdateParticipantPayload } from '@/api/participant';
 import { useTabs } from '@/services/contexts/tabs-context';
 import FormPageLayout from '@/components/ui/form-page-layout';
+import FormField from '@/components/forms/FormField';
+import { useVibraForm } from '@/hooks/useVibraForm';
+import { ParticipantSchema, type ParticipantFormData } from '@/schemas';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -21,15 +24,20 @@ const ParticipantComponent: React.FC<Props> = ({ participantId }) => {
     const isEditing = !!(resolvedId && resolvedId !== 'undefined' && resolvedId !== 'null');
 
     const [participantID, setParticipantID] = useState('');
-    const [nickname, setNickname] = useState('');
-    const [avatar, setAvatar] = useState('');
-    const [currentCourse, setCurrentCourse] = useState('');
-    const [points, setPoints] = useState(0);
-    const [level, setLevel] = useState('bronce');
-    const [currentStreak, setCurrentStreak] = useState(0);
-    const [isActive, setIsActive] = useState(true);
+    const [points] = useState(0);
+    const [level] = useState('bronce');
+    const [currentStreak] = useState(0);
     const [success, setSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const { register, handleSubmit, errors, reset, setValue, watch } = useVibraForm(ParticipantSchema, {
+        nickname: '',
+        avatar: '',
+        currentCourse: '',
+        isActive: true,
+    });
+
+    const watchIsActive = watch('isActive');
 
     useEffect(() => {
         const getData = async () => {
@@ -38,51 +46,46 @@ const ParticipantComponent: React.FC<Props> = ({ participantId }) => {
                 const response: any = await getById(resolvedId);
                 if (response?._id) {
                     setParticipantID(resolvedId);
-                    setNickname(response?.nickname ?? response?.name ?? '');
-                    setAvatar(response?.avatar ?? '');
-                    setCurrentCourse(response?.currentCourse ?? '');
-                    setPoints(response?.points ?? 0);
-                    setLevel(response?.level ?? 'bronce');
-                    setCurrentStreak(response?.currentStreak ?? 0);
-                    setIsActive(response?.isActive ?? true);
+                    reset({
+                        nickname: response?.nickname ?? response?.name ?? '',
+                        avatar: response?.avatar ?? '',
+                        currentCourse: response?.currentCourse ?? '',
+                        isActive: response?.isActive ?? true,
+                    });
                 }
             } catch (error: any) {
                 toast.error(error.message || 'Error al cargar participante');
             }
         };
         if (isEditing) getData();
-    }, [isEditing, resolvedId]);
+    }, [isEditing, resolvedId, reset]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!nickname.trim()) {
-            toast.warning('El nickname es obligatorio');
-            return;
-        }
+    const handleFormSubmit = async (data: ParticipantFormData) => {
         setIsSubmitting(true);
-
         try {
             if (isEditing) {
                 const payload: UpdateParticipantPayload = {
                     _id: participantID,
-                    nickname: nickname.trim(),
-                    avatar: avatar.trim() || undefined,
-                    currentCourse: currentCourse.trim() || undefined,
-                    isActive,
+                    nickname: data.nickname.trim(),
+                    avatar: data.avatar.trim() || undefined,
+                    currentCourse: data.currentCourse.trim() || undefined,
+                    isActive: data.isActive,
                 };
                 await update(payload);
                 setSuccess('Participante actualizado exitosamente');
             } else {
-                // Solo se pueden crear participantes desde la app mobile (auto-registro)
                 toast.error('Los participantes se crean automáticamente desde la app móvil');
             }
-
             setTimeout(() => closeTabWithRefresh(currentTabId, true), 1500);
         } catch (error: any) {
             toast.error(error.message || 'Error al guardar el participante');
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleCancel = () => {
+        closeTab(currentTabId);
     };
 
     if (success) {
@@ -101,43 +104,47 @@ const ParticipantComponent: React.FC<Props> = ({ participantId }) => {
         );
     }
 
-    const handleCancel = () => {
-        closeTab(currentTabId);
-    };
-
     return (
         <FormPageLayout
             title={isEditing ? 'Editar Participante' : 'Nuevo Participante'}
             isEditing={isEditing}
             isSubmitting={isSubmitting}
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit(handleFormSubmit)}
             onCancel={handleCancel}
         >
             <div className="bg-white shadow-md rounded-lg p-6 mb-6">
                 <h2 className="text-lg font-semibold mb-4">Información del Participante</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Nickname *</label>
-                        <input className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                            value={nickname} onChange={(e) => setNickname(e.target.value)}
-                            disabled={!isEditing} />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Avatar (URL)</label>
-                        <input className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                            value={avatar} onChange={(e) => setAvatar(e.target.value)} />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Curso</label>
-                        <input className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                            value={currentCourse} onChange={(e) => setCurrentCourse(e.target.value)} />
-                    </div>
+                    <FormField
+                        label="Nickname *"
+                        name="nickname"
+                        register={register('nickname')}
+                        error={errors.nickname}
+                        placeholder="Nickname del participante"
+                        disabled={!isEditing}
+                    />
+                    <FormField
+                        label="Avatar (URL)"
+                        name="avatar"
+                        register={register('avatar')}
+                        error={errors.avatar}
+                        placeholder="https://..."
+                    />
+                    <FormField
+                        label="Curso"
+                        name="currentCourse"
+                        register={register('currentCourse')}
+                        error={errors.currentCourse}
+                        placeholder="ID del curso"
+                    />
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                        <select className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                            value={isActive ? 'active' : 'inactive'}
-                            onChange={(e) => setIsActive(e.target.value === 'active')}>
+                        <select
+                            value={watchIsActive ? 'active' : 'inactive'}
+                            onChange={(e) => setValue('isActive', e.target.value === 'active')}
+                            className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
+                        >
                             <option value="active">Activo</option>
                             <option value="inactive">Inactivo</option>
                         </select>
@@ -161,7 +168,7 @@ const ParticipantComponent: React.FC<Props> = ({ participantId }) => {
                                 <div className="text-xs text-gray-500">Racha (días)</div>
                             </div>
                             <div className="bg-blue-50 rounded-lg p-3 text-center">
-                                <div className="text-2xl font-bold text-blue-600">{currentCourse || '-'}</div>
+                                <div className="text-2xl font-bold text-blue-600">{watch('currentCourse') || '-'}</div>
                                 <div className="text-xs text-gray-500">Curso</div>
                             </div>
                         </div>

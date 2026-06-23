@@ -18,13 +18,16 @@ import {
 import { Input } from "@/registry/new-york/ui/input";
 import { Button } from "@/registry/new-york/ui/button";
 import { Label } from "@/registry/new-york/ui/label";
-import { Pencil1Icon } from "@radix-ui/react-icons";
+import { Pencil1Icon, ImageIcon } from "@radix-ui/react-icons";
 import { SaveIcon, ShieldIcon } from "lucide-react";
 import api from "@/api/axios-instance";
 import logger from "@/config/logger-dev";
 import usePasswordStrength from "@/hooks/usePasswordStrength";
 import Select from "@/components/forms/select";
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from "@/utils/safe-token-storage";
+import PhoneInput from "@/components/forms/PhoneInput";
+import { maskFormatPhoneNumber, unmaskPhoneNumber } from "@/utils/number";
+import { AvatarGalleryModal } from "@/components/profile/AvatarGalleryModal";
 
 function PasswordStrengthIndicator({ password }: { password: string }) {
   const strength = usePasswordStrength(password ?? '');
@@ -72,24 +75,25 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user: initia
 
   const userId = initialUser?._id || initialUser?.sub || initialUser?.userId || '';
 
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setSuccess("");
+    useEffect(() => {
+        if (!open) return;
+        setError("");
+        setSuccess("");
 
-    const stored = getSafeKeyObjectFromStorage('user') || {};
-    const resolveDocType = (dt: any) => dt?._id || dt?.toString() || dt || '';
-    setForm({
-      name: stored.name ?? initialUser.name ?? "",
-      email: stored.email ?? initialUser.email ?? "",
-      username: stored.username ?? initialUser.username ?? "",
-      documentType: resolveDocType(stored.documentType) || resolveDocType(initialUser.documentType) || "",
-      documentNumber: stored.documentNumber ?? initialUser.documentNumber ?? "",
-      phoneNumber: stored.phoneNumber ?? initialUser.phoneNumber ?? "",
-      address: stored.address ?? initialUser.address ?? "",
-      gender: stored.gender ?? initialUser.gender ?? "",
-      birthDate: stored.birthDate ?? initialUser.birthDate ?? "",
-    });
+        const stored = getSafeKeyObjectFromStorage('user') || {};
+        const resolveDocType = (dt: any) => dt?._id || dt?.toString() || dt || '';
+        const rawPhone = stored.phoneNumber ?? initialUser.phoneNumber ?? '';
+        setForm({
+            name: stored.name ?? initialUser.name ?? "",
+            email: stored.email ?? initialUser.email ?? "",
+            username: stored.username ?? initialUser.username ?? "",
+            documentType: resolveDocType(stored.documentType) || resolveDocType(initialUser.documentType) || "",
+            documentNumber: stored.documentNumber ?? initialUser.documentNumber ?? "",
+            phoneNumber: maskFormatPhoneNumber(rawPhone),
+            address: stored.address ?? initialUser.address ?? "",
+            gender: stored.gender ?? initialUser.gender ?? "",
+            birthDate: stored.birthDate ?? initialUser.birthDate ?? "",
+        });
 
     api.get('/api/document-types/all').then((res) => {
       setDocTypes(Array.isArray(res.data) ? res.data : []);
@@ -107,7 +111,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user: initia
             username: u.username ?? prev.username,
             documentType: docType,
             documentNumber: u.documentNumber ?? prev.documentNumber,
-            phoneNumber: u.phoneNumber ?? prev.phoneNumber,
+            phoneNumber: maskFormatPhoneNumber(u.phoneNumber ?? prev.phoneNumber),
             address: u.address ?? prev.address,
             gender: u.gender ?? prev.gender,
             birthDate: u.birthDate ? u.birthDate.split('T')[0] : prev.birthDate,
@@ -152,6 +156,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user: initia
     setLoading(true);
     try {
       const payload: Record<string, any> = { _id: userId, ...form };
+      // Normalizar teléfono: enviar solo dígitos
+      payload.phoneNumber = unmaskPhoneNumber(form.phoneNumber);
       if (!payload.birthDate) delete payload.birthDate;
       await api.post("/api/users", payload);
       updateLocalUser(form);
@@ -179,10 +185,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user: initia
         <DialogHeader><DialogTitle>Editar Perfil</DialogTitle></DialogHeader>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 rounded-lg bg-gray-200 p-1">
+          <TabsList className="grid w-full grid-cols-3 rounded-lg bg-gray-200 p-1">
             <TabsTrigger value="datos"
               className={`rounded-md px-4 py-2 text-sm font-semibold transition-all ${activeTab === "datos" ? "bg-white text-gray-900 shadow-sm" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}>
               Datos Personales
+            </TabsTrigger>
+            <TabsTrigger value="avatar"
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition-all ${activeTab === "avatar" ? "bg-white text-gray-900 shadow-sm" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}>
+              Avatar
             </TabsTrigger>
             <TabsTrigger value="seguridad"
               className={`rounded-md px-4 py-2 text-sm font-semibold transition-all ${activeTab === "seguridad" ? "bg-white text-gray-900 shadow-sm" : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"}`}>
@@ -216,8 +226,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user: initia
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Teléfono</Label>
-                <Input autoComplete="off" id="phoneNumber" value={form.phoneNumber} onChange={(e) => updateField("phoneNumber", e.target.value)} placeholder="3001234567" />
+                <PhoneInput value={form.phoneNumber} onChange={(val) => updateField("phoneNumber", val)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Dirección</Label>
@@ -230,6 +239,23 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ user: initia
               <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={loading}>Cancelar</Button>
               <Button onClick={handlePersonalSubmit} disabled={loading}><SaveIcon className="w-4 h-4" /> {loading ? "Guardando..." : "Guardar Cambios"}</Button>
             </div>
+          </TabsContent>
+
+          <TabsContent value="avatar" className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              Selecciona un avatar prediseñado o sube una imagen propia.
+            </p>
+            <AvatarGalleryModal
+              user={initialUser}
+              onAvatarChange={() => {
+                // Refrescar el usuario cuando cambia el avatar
+                onUpdate?.();
+              }}
+            >
+              <span className="text-sm text-blue-500 cursor-pointer hover:underline">
+                Abrir galería de avatares →
+              </span>
+            </AvatarGalleryModal>
           </TabsContent>
 
           <TabsContent value="seguridad" className="space-y-4 py-4">

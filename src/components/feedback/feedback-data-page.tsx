@@ -1,19 +1,17 @@
 'use client';
 
 import { convertFeedbackToIdea } from '@/api/feedback';
-import { getIdeasStatus } from '@/api/admin';
+import { getIdeasStatus, getAllIdeas } from '@/api/admin';
 import { config } from '@/config/config';
 import { Feedback } from '@/models/feedback.entity';
 import { AuthContext } from '@/services/auth';
-import { RefreshIcon, SearchIcon, XCircleIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
-import '../../../app/globals.css';
-import Pagination from '../ui/table/pagination';
-import CurrentDateTime from '../utils/current-datetime';
 import FeedbackConvertModal from './feedback-convert-modal';
+import { Eye, MessageSquare } from 'lucide-react';
+import ListPageLayout from '@/components/ui/list-page-layout';
 import './feedback.css';
 
 const environment = process.env.NODE_ENV || 'development';
@@ -37,6 +35,8 @@ const FeedbackDataPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [enDesarrolloCount, setEnDesarrolloCount] = useState(0);
+    const [ideasMap, setIdeasMap] = useState<Record<string, string>>({});
+    const [filterStatus, setFilterStatus] = useState<string>('all');
 
     // Convert modal state
     const [convertModal, setConvertModal] = useState<{ show: boolean; feedback: FeedbackWithMeta | null }>({
@@ -70,11 +70,13 @@ const FeedbackDataPage: React.FC = () => {
 
             if (term) {
                 const result = await response.json();
-                setData(result.data || []);
+                const sorted = (result.data || []).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                setData(sorted);
                 setTotal(result.data?.length || 0);
             } else {
                 const result = await response.json();
-                setData(result.feedbacks || []);
+                const sorted = (result.feedbacks || []).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                setData(sorted);
                 setTotal(result.length || 0);
             }
         } catch (error) {
@@ -100,17 +102,24 @@ const FeedbackDataPage: React.FC = () => {
         loadIdeasStatus();
     }, []);
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!searchTerm.trim()) return;
-        setCurrentPage(1);
-        // useEffect se encarga de cargar con searchTerm actualizado
+    const loadIdeasMap = async () => {
+        const result = await getAllIdeas();
+        if (result?.data) {
+            const map: Record<string, string> = {};
+            result.data.forEach((idea: any) => {
+                if (idea.id) {
+                    map[idea.id] = idea.estado;
+                }
+            });
+            setIdeasMap(map);
+        }
     };
 
-    const handleSearchClear = () => {
-        setSearchTerm('');
-        setCurrentPage(1);
-    };
+    useEffect(() => {
+        if (data.some((f) => f.convertedToIdea)) {
+            loadIdeasMap();
+        }
+    }, [data]);
 
     useEffect(() => {
         if (!token) {
@@ -164,167 +173,147 @@ const FeedbackDataPage: React.FC = () => {
         }
     };
 
+    const filteredData = data.filter((f) => {
+        if (filterStatus === 'all') return true;
+        if (filterStatus === 'pending') return !f.convertedToIdea;
+        if (filterStatus === 'converted') return f.convertedToIdea;
+        if (filterStatus.startsWith('idea_')) {
+            const targetStatus = filterStatus.replace('idea_', '');
+            return f.convertedToIdea && ideasMap[f.ideaId || ''] === targetStatus;
+        }
+        return true;
+    });
+
+    const cards = [
+        { key: 'all', label: 'Feedback Total', value: data.length, bg: 'bg-gray-50', text: 'text-gray-800', labelText: 'text-gray-500' },
+        { key: 'pending', label: 'Pendientes', value: data.filter((f) => !f.convertedToIdea).length, bg: 'bg-amber-50', text: 'text-amber-600', labelText: 'text-amber-600' },
+        { key: 'converted', label: 'Convertidos', value: data.filter((f) => f.convertedToIdea).length, bg: 'bg-green-50', text: 'text-green-600', labelText: 'text-green-600' },
+        { key: 'idea_en_desarrollo', label: 'En desarrollo', value: data.filter((f) => f.convertedToIdea && ideasMap[f.ideaId || ''] === 'en_desarrollo').length, bg: 'bg-indigo-50', text: 'text-indigo-600', labelText: 'text-indigo-600' },
+        { key: 'idea_desarrollada', label: 'Desarrolladas', value: data.filter((f) => f.convertedToIdea && ideasMap[f.ideaId || ''] === 'desarrollada').length, bg: 'bg-emerald-50', text: 'text-emerald-600', labelText: 'text-emerald-600' },
+    ];
+
     return (
         <>
-            <div className="hidden flex-col md:flex w-full mt-0">
-                <div className="hidden flex-col w-full md:flex mt-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-3xl font-bold tracking-tight ml-3">Gestión de Feedback</h2>
-                        <div className="flex items-center space-x-2">
-                            <div className="bg-white rounded-md px-2 pl-2 mb-0 pb-1">
-                                <CurrentDateTime />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-md w-full mt-3 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 className="text-xl font-semibold">Lista de Feedback</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Gestione los feedbacks recibidos y conviértalos en ideas del backlog.
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <form onSubmit={handleSearch} className="relative">
-                                <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Buscar feedback..."
-                                    className="w-60 rounded-md border border-gray-300 pl-9 pr-8 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                />
-                                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                {searchTerm && (
-                                    <button
-                                        type="button"
-                                        onClick={handleSearchClear}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2"
-                                    >
-                                        <XCircleIcon className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                                    </button>
-                                )}
-                            </form>
-                            <RefreshIcon
-                                className="h-7 w-7 text-blue-600 cursor-pointer hover:text-green-500"
-                                onClick={() => {
-                                    setSearchTerm('');
-                                    setCurrentPage(1);
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Stats Bar */}
-                    <div className="grid grid-cols-4 gap-4 mb-6">
-                        <div className="bg-gray-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-500">Feedback Total</p>
-                            <p className="text-2xl font-bold text-gray-800">{total}</p>
-                        </div>
-                        <div className="bg-amber-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-amber-600">Pendientes</p>
-                            <p className="text-2xl font-bold text-amber-600">
-                                {data.filter((f) => !f.convertedToIdea).length}
-                            </p>
-                        </div>
-                        <div className="bg-green-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-green-600">Convertidos</p>
-                            <p className="text-2xl font-bold text-green-600">
-                                {data.filter((f) => f.convertedToIdea).length}
-                            </p>
-                        </div>
-                        <div className="bg-indigo-50 rounded-lg p-4 text-center">
-                            <p className="text-sm text-indigo-600">En Desarrollo (backlog)</p>
-                            <p className="text-2xl font-bold text-indigo-600">
-                                {enDesarrolloCount}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Tabla */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="uppercase tracking-wider border-b-2">
-                                <tr>
-                                    <th className="px-2 py-2">Serial</th>
-                                    <th className="px-2 py-2">Título</th>
-                                    <th className="px-2 py-2 w-auto">Descripción</th>
-                                    <th className="px-2 py-2">Tipo</th>
-                                    <th className="px-2 py-2">Estado</th>
-                                    <th className="px-2 py-2">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-8 text-gray-500">
-                                            {isLoading ? 'Cargando...' : 'No hay feedbacks registrados'}
-                                        </td>
-                                    </tr>
-                                )}
-                                {data.map((feedback) => (
-                                    <tr key={feedback._id} className="hover:bg-blue-50 border-b cursor-pointer" onClick={() => openDetail(feedback)}>
-                                        <td className="px-2 py-2.5 font-mono text-xs whitespace-nowrap">
-                                            #{feedback.serial || feedback._id?.slice(-4)}
-                                        </td>
-                                        <td className="px-2 py-2.5 font-medium truncate max-w-[180px]">
-                                            {feedback.title}
-                                        </td>
-                                        <td className="px-2 py-2.5 text-gray-600 truncate">
-                                            {feedback.description?.length > 100
-                                                ? feedback.description.slice(0, 100) + '…'
-                                                : feedback.description}
-                                        </td>
-                                        <td className="px-2 py-2.5 whitespace-nowrap">
-                                            <span className={feedback.isFeature ? 'badge-feature' : 'badge-support'}>
-                                                {feedback.isFeature ? 'Mejora' : 'Apoyo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-2 py-2.5 whitespace-nowrap">
-                                            {feedback.convertedToIdea ? (
-                                                <span className="badge-converted">
-                                                    {feedback.ideaId || 'Convertido'}
-                                                </span>
-                                            ) : (
-                                                <span className="badge-pending">Pendiente</span>
-                                            )}
-                                        </td>
-                                        <td className="px-2 py-2.5 whitespace-nowrap">
-                                            <div className="flex items-center gap-1">
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); openDetail(feedback); }}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                                    title="Ver detalle"
-                                                >
-                                                    👁️
-                                                </button>
-                                                {!feedback.convertedToIdea && (
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); openConvertModal(feedback); }}
-                                                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
-                                                        title="Convertir a Idea"
-                                                    >
-                                                        📝
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <Pagination
-                        currentPage={currentPage}
-                        pageSize={pageSize}
-                        totalItems={total}
-                        onPageChange={setCurrentPage}
-                        setPageSize={setPageSize}
-                    />
-                </div>
+            {/* Stats Bar */}
+            <div className="grid grid-cols-5 gap-3 mt-4 px-1">
+                {cards.map((card) => {
+                    const isActive = filterStatus === card.key;
+                    return (
+                        <button
+                            key={card.key}
+                            onClick={() => setFilterStatus(card.key)}
+                            className={`rounded-lg border p-3 text-center transition-all duration-150 cursor-pointer ${
+                                isActive
+                                    ? `${card.bg} ${card.text} border-current shadow-md ring-2 ring-blue-400/40 ring-offset-1 scale-[1.02]`
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                            }`}
+                        >
+                            <p className={`text-2xl font-bold ${isActive ? card.text : 'text-gray-800'}`}>{card.value}</p>
+                            <p className={`text-xs mt-0.5 ${isActive ? card.labelText : 'text-gray-500'}`}>{card.label}</p>
+                        </button>
+                    );
+                })}
             </div>
+
+            <ListPageLayout
+                title="Gestión de Feedback"
+                subtitle="Gestione los feedbacks recibidos y conviértalos en ideas del backlog."
+                data={filteredData}
+                total={filterStatus === 'all' ? total : filteredData.length}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                isLoading={isLoading}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                onRefresh={() => { setSearchTerm(''); setCurrentPage(1); loadData('', 1, pageSize); }}
+                searchEntity="feedback"
+                onSearchData={(results) => setData(results as FeedbackWithMeta[])}
+                onSearchLoading={setIsLoading}
+                emptyMessage="No hay feedbacks registrados"
+                columns={[
+                    {
+                        key: 'serial',
+                        label: 'Serial',
+                        render: (f: FeedbackWithMeta) => (
+                            <span className="font-mono text-xs whitespace-nowrap">
+                                #{f.serial || f._id?.slice(-4)}
+                            </span>
+                        ),
+                    },
+                    {
+                        key: 'title',
+                        label: 'Título',
+                        render: (f) => <span className="font-medium truncate max-w-[180px] block">{f.title}</span>,
+                    },
+                    {
+                        key: 'description',
+                        label: 'Descripción',
+                        render: (f) => (
+                            <span className="text-gray-600 truncate block max-w-xs">
+                                {f.description?.length > 100 ? f.description.slice(0, 100) + '…' : f.description}
+                            </span>
+                        ),
+                    },
+                    {
+                        key: 'type',
+                        label: 'Tipo',
+                        render: (f) => (
+                            <span className={f.isFeature ? 'badge-feature' : 'badge-support'}>
+                                {f.isFeature ? 'Mejora' : 'Apoyo'}
+                            </span>
+                        ),
+                    },
+                    {
+                        key: 'status',
+                        label: 'Estado',
+                        render: (f) => {
+                            if (!f.convertedToIdea) {
+                                return <span className="badge-pending">Pendiente</span>;
+                            }
+                            const ideaStatus = ideasMap[f.ideaId || ''];
+                            const statusStyles: Record<string, string> = {
+                                pendiente: 'bg-gray-100 text-gray-700 border-gray-300',
+                                en_desarrollo: 'bg-amber-50 text-amber-700 border-amber-300',
+                                desarrollada: 'bg-green-50 text-green-700 border-green-300',
+                            };
+                            const style = statusStyles[ideaStatus] || 'bg-blue-50 text-blue-700 border-blue-300';
+                            const label: Record<string, string> = {
+                                pendiente: '⏳ Pendiente',
+                                en_desarrollo: '🔄 En desarrollo',
+                                desarrollada: '✅ Desarrollada',
+                            };
+                            return (
+                                <div className="flex items-center gap-1.5">
+                                    <span className="badge-converted text-xs">{f.ideaId}</span>
+                                    {ideaStatus ? (
+                                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${style}`}>
+                                            {label[ideaStatus] || ideaStatus}
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs text-gray-400">sin estado</span>
+                                    )}
+                                </div>
+                            );
+                        },
+                    },
+                ]}
+                rowKey={(f) => f._id!}
+                actions={[
+                    {
+                        icon: <Eye className="w-4 h-4" />,
+                        tooltip: 'Ver detalle',
+                        onClick: openDetail,
+                        color: 'text-blue-600',
+                    },
+                    {
+                        icon: <MessageSquare className="w-4 h-4" />,
+                        tooltip: 'Convertir a Idea',
+                        onClick: openConvertModal,
+                        color: 'text-indigo-600',
+                        show: (f) => !f.convertedToIdea,
+                    },
+                ]}
+            />
 
             {/* Convert Modal */}
             {convertModal.show && convertModal.feedback && (
@@ -409,7 +398,7 @@ const FeedbackDataPage: React.FC = () => {
                                         onClick={() => openConvertModal(detailModal.feedback!)}
                                         className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-500 transition-colors flex items-center gap-2"
                                     >
-                                        📝 Convertir a Idea
+                                        <MessageSquare className="w-4 h-4" /> Convertir a Idea
                                     </button>
                                 )}
                                 {detailModal.feedback.convertedToIdea && (

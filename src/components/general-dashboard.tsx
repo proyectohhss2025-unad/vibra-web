@@ -2,7 +2,7 @@
 
 import { Metadata } from "next"
 
-import { getCountAllNotifications } from "@/api/notification"
+import { getCountAllNotifications, getAll } from "@/api/notification"
 import { User } from "@/models/user.entity"
 import {
     Card,
@@ -28,19 +28,20 @@ import { formatDate, getFirstAndLastDayOfYear, getYearCurrent } from "@/utils/da
 import { formatToLocalCurrency } from "@/utils/money"
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from "@/utils/safe-token-storage"
 import { Badge } from "@/registry/new-york/ui/badge"
-import { CheckCheckIcon, CircleDollarSignIcon, HandCoins, NotebookTabsIcon, SquareArrowOutUpRightIcon, Wallet2Icon } from "lucide-react"
+import { CheckCheckIcon, CircleDollarSignIcon, NotebookTabsIcon, Users, Wallet2Icon } from "lucide-react"
 import { useRouter } from "next/router"
 import { useContext, useEffect, useState } from "react"
+import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from "recharts"
 import AnalyticsDashboard from "./analytics/analytics-dashboard"
 import CalendarDateRangePicker from "./general-dashboard/date-range-picker"
 import DropdownMenuButton from "./layouts/menu/dropdown-menu-button"
 import ActivityDataPage from "./activity/data-page"
 import ActivityComponent from "./activity/activity"
-import { getCountAllParticipants } from "@/api/participant"
+import { getCountAllParticipants, getLeaderboard } from "@/api/participant"
 import { getCountAllUsers } from "@/api/user"
 import { getCountAllPretest } from "@/api/preTest"
 import UserDataPage from "./user/data-page"
-import { getCountAllActivities, getCountByType, getTodayActivity, getTodayCompletionsCount } from "@/api/activity"
+import { getCountAllActivities, getCountByType, getTodayActivity, getTodayCompletionsCount, getActivitiesByMonth, getCreatedActivitiesByMonth } from "@/api/activity"
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -95,28 +96,42 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     ]);
     const [todayActivityStatus, setTodayActivityStatus] = useState<'loading' | 'active' | 'no_activity'>('loading');
     const [totalNotifications, setTotalNotifications] = useState<string | null>(null);
+    const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+    const [monthlyActivities, setMonthlyActivities] = useState<{ month: string; count: number }[]>([]);
+    const [monthlyCreated, setMonthlyCreated] = useState<{ month: string; count: number }[]>([]);
+    const [topParticipants, setTopParticipants] = useState<any[]>([]);
     const [labelData, setLabelData] = useState<any>();
     const router = useRouter();
     const { openTab } = useTabs();
 
     useEffect(() => {
-        setYearFilter(Number(getSafeKeyFromStorage('yearFilter')) ?? getYearCurrent());
-    }, [yearFilter]);
-
-    useEffect(() => {
-        getCountAllActivities()
-            .then(data => {
-                setTotalActivities(data?.count ?? 0);
-            });
-        getTodayCompletionsCount()
-            .then(data => {
-                setTotalCompletionsToday(data?.count ?? 0);
-            });
-        getCountByType('reto')
-            .then(data => {
-                setTotalActiveRetos(data?.count ?? 0);
-            });
+        const saved = Number(getSafeKeyFromStorage('yearFilter'));
+        if (saved) setYearFilter(saved);
+        else setYearFilter(getYearCurrent());
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const getTodayStr = () => {
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    };
+
+    const safeISO = (d: Date | undefined | null) => {
+        if (!d) return undefined;
+        try { return d.toISOString(); } catch { return undefined; }
+    };
+
+    const refreshCounts = (from?: Date | null, to?: Date | null) => {
+        const dateInit = safeISO(from) || getTodayStr() + 'T00:00:00.000Z';
+        const dateEnd = safeISO(to) || getTodayStr() + 'T23:59:59.999Z';
+        getCountAllActivities(dateInit, dateEnd)
+            .then(data => setTotalActivities(data?.count ?? 0));
+        getTodayCompletionsCount()
+            .then(data => setTotalCompletionsToday(data?.count ?? 0));
+        getCountByType('reto')
+            .then(data => setTotalActiveRetos(data?.count ?? 0));
+    };
+
+    useEffect(() => { refreshCounts(dateInitFilter, dateEndFilter); }, []);
 
     useEffect(() => {
         getTodayActivity()
@@ -134,19 +149,61 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     }, []);
 
     useEffect(() => {
+        getAll(1, 5)
+            .then(data => {
+                if (data?.notifications) setRecentNotifications(data.notifications);
+            })
+            .catch(() => {});
+    }, []);
+
+    const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+    useEffect(() => {
+        getActivitiesByMonth(selectedYear)
+            .then((result) => {
+                const mapped = result.map((r: any) => ({
+                    month: MONTHS_SHORT[r.month - 1] || `M${r.month}`,
+                    count: r.count,
+                }));
+                setMonthlyActivities(mapped);
+            })
+            .catch(() => setMonthlyActivities([]));
+    }, [selectedYear]);
+
+    useEffect(() => {
+        getCreatedActivitiesByMonth(selectedYear)
+            .then((result) => {
+                const mapped = result.map((r: any) => ({
+                    month: MONTHS_SHORT[r.month - 1] || `M${r.month}`,
+                    count: r.count,
+                }));
+                setMonthlyCreated(mapped);
+            })
+            .catch(() => setMonthlyCreated([]));
+    }, [selectedYear]);
+
+    useEffect(() => {
+        getLeaderboard(5)
+            .then(data => {
+                if (data?.leaderboard) setTopParticipants(data.leaderboard);
+            })
+            .catch(() => setTopParticipants([]));
+    }, []);
+
+    useEffect(() => {
         getCountAllParticipants()
             .then(data => {
-                if (data) setTotalParticipants(data.count);
+                if (data !== null && data !== undefined) setTotalParticipants(typeof data === 'object' ? (data as any).count ?? 0 : data);
             });
     }, []);
-    
+
     useEffect(() => {
         getCountAllUsers()
             .then(data => {
                 setTotalUsers(data);
             });
     }, []);
-    
+
     useEffect(() => {
         getCountAllPretest()
             .then(data => {
@@ -154,9 +211,18 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
             });
     }, []);
 
+    const formatFilterDate = (date: any): string => {
+        if (!date) return 'Sin filtro';
+        try {
+            return formatDate(date, FORMAT_DATE_SHORT);
+        } catch {
+            return 'Fecha inválida';
+        }
+    };
+
     useEffect(() => {
         setLabelData(dataLabel_());
-    }, [dateInitFilter, dateEndFilter]);
+    }, [yearFilter, dateInitFilter, dateEndFilter, participantFilter]);
 
     useEffect((): any => {
         // Validar autenticación, ignorando cambios de refreshData (que es para tabs hijas)
@@ -175,11 +241,23 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     const renderOption = ({ label }) => label;
     const dataLabel_ = () => {
         return (
-            <div>
-                <p>Año: {yearFilter} </p>
-                <p>Fecha Inicio: {formatDate(dateInitFilter, FORMAT_DATE_SHORT)}</p>
-                <p>Fecha Fin: {formatDate(dateEndFilter, FORMAT_DATE_SHORT)}</p>
-                <p>Usuarios: {participantFilter?.label}</p>
+            <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 w-20">Año:</span>
+                    <span className="text-sm font-semibold text-gray-800">{yearFilter || 'Todos'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 w-20">Desde:</span>
+                    <span className="text-sm text-gray-800">{formatFilterDate(dateInitFilter)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 w-20">Hasta:</span>
+                    <span className="text-sm text-gray-800">{formatFilterDate(dateEndFilter)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 w-20">Usuario:</span>
+                    <span className="text-sm text-gray-800">{participantFilter?.label || 'Todos'}</span>
+                </div>
             </div>
         )
     }
@@ -194,6 +272,7 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
         const { firstDay, lastDay } = getFirstAndLastDayOfYear(option?.name);
         setDateInitFilter(firstDay ?? new Date());
         setDateEndFilter(lastDay ?? new Date());
+        refreshCounts(firstDay, lastDay);
 
         localStorage.setItem('date', option?.name);
         localStorage.setItem('dateFilterFrom', formatDate(firstDay, FORMAT_DATE_SHORT));
@@ -202,18 +281,30 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
 
     const handleDoubleClick = (event: React.MouseEvent) => {
         setIsRange(false);
+        // Establecer las fechas al año seleccionado actualmente
+        const year = selectedYear || getYearCurrent();
+        const { firstDay, lastDay } = getFirstAndLastDayOfYear(year);
+        setDateInitFilter(firstDay ?? new Date());
+        setDateEndFilter(lastDay ?? new Date());
+        refreshCounts(firstDay, lastDay);
     };
 
     const handleDoubleClickRange = (event: React.MouseEvent) => {
         setIsRange(true);
+        // Establecer las fechas al mes actual
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        setDateInitFilter(firstDay);
+        setDateEndFilter(lastDay);
+        refreshCounts(firstDay, lastDay);
     };
 
     const setSelectedDate_ = (value: any) => {
-        //console.log("value from:", formatDate(value?.from, FORMAT_DATE_MEDIUM));
-        //console.log("value to:", formatDate(value?.to, FORMAT_DATE_MEDIUM));
         setDateInitFilter(value?.from);
         setDateEndFilter(value?.to);
         setSelectedDate(value);
+        refreshCounts(value?.from, value?.to);
     };
 
     return (
@@ -367,7 +458,17 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div onDoubleClick={handleDoubleClickRange}>
-                                            <CalendarDateRangePicker disabled={!isRange} setIsRange={setIsRange} setSelectedDate={setSelectedDate_} />
+                                            <CalendarDateRangePicker
+                                                disabled={!isRange}
+                                                setIsRange={setIsRange}
+                                                setSelectedDate={setSelectedDate_}
+                                                externalDateFrom={dateInitFilter ? formatDate(dateInitFilter, 'YYYY-MM-DD') : null}
+                                                externalDateTo={dateEndFilter ? formatDate(dateEndFilter, 'YYYY-MM-DD') : null}
+                                                onYearSelected={(year) => {
+                                                    setSelectedYear(year);
+                                                    setYearFilter(year);
+                                                }}
+                                            />
                                         </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -466,9 +567,9 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                 <Card className="bg-white rounded-md">
                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                         <CardTitle className="text-md font-normal">
-                                            Total usuarios
+                                            Total de usuarios
                                         </CardTitle>
-                                        <HandCoins onClick={() => {
+                                        <Users onClick={() => {
                                             openTab(
                                                 `/Total de Usuarios`,
                                                 "Total de Usuarios",
@@ -531,35 +632,124 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             </div>
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                                 <Card className="col-span-4 bg-white rounded-md">
-                                    <CardHeader>
+                                    <CardHeader className="pb-2">
                                         <CardTitle>
                                             <div className="flex items-center justify-between">
                                                 <p>Información general</p>
-                                                <SquareArrowOutUpRightIcon onClick={() => {
-                                                    /*openTab(
-                                                        `/InformacionGeneral`,
-                                                        "Información general",
-                                                        <ParticipantDashboardMini />
-                                                    );*/
-                                                }} className="h-5 w-5 text-gray-500 hover:text-gray-700 cursor-pointer" />
                                             </div>
                                         </CardTitle>
                                         <CardDescription>
-                                            Cantidad de actividades generadas por mes en el año {selectedYear}.
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="pl-2">
-                                        {/*<ParticipantDashboardMini />*/}
-                                    </CardContent>
-                                </Card>
-                                <Card className="col-span-3 bg-white rounded-md">
-                                    <CardHeader>
-                                        <CardTitle>Acciones recientes</CardTitle>
-                                        <CardDescription className="text-sm">
-                                            Se han gestionado {totalActivities} actividades este mes.
+                                            Actividades creadas y sus participaciones por mes en {selectedYear}
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
+                                        {(() => {
+                                            const chartData = monthlyCreated.length > 0 ? monthlyCreated.map((m, i) => ({
+                                                month: m.month,
+                                                creadas: m.count,
+                                                participaciones: monthlyActivities[i]?.count || 0,
+                                            })) : [];
+                                            return chartData.length > 0 ? (
+                                                <div className="h-[160px] mb-4">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                            <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                                                            <RechartsTooltip content={({ active, payload }) => {
+                                                                if (!active || !payload?.length) return null;
+                                                                const d = payload[0].payload;
+                                                                return (
+                                                                    <div className="bg-white border rounded-md shadow-md px-3 py-2 text-xs space-y-1">
+                                                                        <p className="font-medium text-gray-700">{d.month}</p>
+                                                                        <p><span className="text-blue-600 font-semibold">{d.creadas}</span> actividades creadas</p>
+                                                                        <p><span className="text-green-600 font-semibold">{d.participaciones}</span> participaciones</p>
+                                                                    </div>
+                                                                );
+                                                            }} />
+                                                            <Bar dataKey="creadas" name="Actividades" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                                                        </BarChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                            ) : (
+                                                <div className="h-[120px] flex items-center justify-center">
+                                                    <p className="text-sm text-muted-foreground">No hay datos para {selectedYear}</p>
+                                                </div>
+                                            );
+                                        })()}
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+                                                <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                Top participantes
+                                            </h4>
+                                            {topParticipants.length === 0 ? (
+                                                <p className="text-xs text-muted-foreground text-center py-4">Sin datos de participación</p>
+                                            ) : (
+                                                <ul className="space-y-2">
+                                                    {topParticipants.map((p: any) => (
+                                                        <li key={p.rank} className="flex items-center gap-2 border-b border-gray-100 pb-2 last:border-0">
+                                                            <span className="text-xs font-bold text-gray-400 w-4 text-right flex-shrink-0">{p.rank}</span>
+                                                            {p.avatar ? (
+                                                                <img src={p.avatar} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
+                                                            ) : (
+                                                                <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-500 flex-shrink-0">
+                                                                    {p.nickname?.charAt(0)?.toUpperCase() || '?'}
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                                <span className="text-sm font-medium truncate">{p.nickname || 'Participante'}</span>
+                                                                {p.course && (
+                                                                    <span className="text-[11px] text-muted-foreground truncate">
+                                                                        {p.course.name}{p.course.companyName ? ` · ${p.course.companyName}` : ''}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                {p.level && (
+                                                                    <span className="text-[10px] uppercase font-semibold text-gray-400">{p.level}</span>
+                                                                )}
+                                                                <span className="text-sm font-semibold text-blue-600">{p.points ?? 0}</span>
+                                                            </div>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card className="col-span-3 bg-white rounded-md">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle>Acciones recientes</CardTitle>
+                                        <CardDescription className="text-sm">
+                                            Últimas notificaciones del sistema
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="max-h-[260px] overflow-y-auto">
+                                        {recentNotifications.length === 0 ? (
+                                            <p className="text-sm text-muted-foreground text-center py-8">
+                                                No hay acciones recientes
+                                            </p>
+                                        ) : (
+                                            <ul className="space-y-3">
+                                                {recentNotifications.map((n: any, i: number) => (
+                                                    <li key={n._id || i} className="flex items-start gap-3 border-b border-gray-100 pb-2 last:border-0">
+                                                        <div className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${n.isRead ? 'bg-gray-300' : 'bg-blue-500'}`} />
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-medium truncate">{n.title}</p>
+                                                            {n.message && (
+                                                                <p className="text-xs text-muted-foreground truncate">{n.message}</p>
+                                                            )}
+                                                            {n.createdAt && (
+                                                                <p className="text-xs text-gray-400 mt-0.5">
+                                                                    {new Date(n.createdAt).toLocaleDateString(LOCALE, {
+                                                                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                                                                    })}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </div>

@@ -8,7 +8,8 @@ import { User } from '@/models/user.entity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/registry/new-york/ui/card';
 import { AuthContext } from '@/services/auth';
 import { useTabs } from '@/services/contexts/tabs-context';
-import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
+import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
+import { useTranslation } from 'react-i18next';
 import { copyContent } from '@/utils/string';
 import { ArrowCircleLeftIcon, PlusCircleIcon, RefreshIcon } from '@heroicons/react/solid';
 import { useRouter } from 'next/router';
@@ -28,6 +29,7 @@ const configAPI = {
 };
 
 const PreTestDataPage: React.FC = () => {
+    const { t } = useTranslation();
     const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
     const { token } = useContext(AuthContext);
 
@@ -130,7 +132,7 @@ const PreTestDataPage: React.FC = () => {
                                         <div className='flex justify-end align-items mb-3'>
                                             <RefreshIcon
                                                 data-tooltip-id="my-tooltip-t"
-                                                data-tooltip-content={getSafeKeyFromStorage('Refrescar esta lista')}
+                                                data-tooltip-content={t('common.refreshList')}
                                                 className="justify-start h-7 w-7 text-blue-600 ml-4 mr-0 mt-3 cursor-pointer font-semibold hover:text-green"
                                                 onClick={() => {
                                                     setCurrentPage(1);

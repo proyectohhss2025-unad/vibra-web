@@ -44,14 +44,22 @@ const Footer = () => {
     }
   };
 
+  if (!isActive) {
+    return (
+      <PanelTopCloseIcon
+        style={{ position: 'fixed', bottom: '4px', left: '4px', zIndex: 50, cursor: 'pointer' }}
+        className="h-5 w-5 rounded-md text-gray-400 hover:text-blue-600 transition-colors duration-150"
+        onClick={toggleFooter}
+      />
+    );
+  }
+
   return (
-    <footer className={isActive ? 'footer bg-gray-700' + ' ' + 'active' : 'footer inactive'}>
+    <footer className="footer bg-gray-700 active">
       <div className={'content'} >
-        {!isActive && <PanelTopCloseIcon style={{ float: 'left' }} className="h-6 w-6 p-0 rounded-md text-white"
-          onClick={toggleFooter} />}
-        {isActive && <PanelBottomCloseIcon style={{ float: 'left' }} className="h-6 w-6 p-0 rounded-md text-white"
-          onClick={toggleFooter} />}
-        {isActive && <div><ul>
+        <PanelBottomCloseIcon style={{ float: 'left' }} className="h-6 w-6 p-0 rounded-md text-white"
+          onClick={toggleFooter} />
+        <div><ul>
           <li>
             <Link href="/home-dashboard">{home}</Link>
           </li>
@@ -66,7 +74,7 @@ const Footer = () => {
           </li>
         </ul>
           <p>{COPYRIGHT} &copy; {YEAR} - {FULL_NAME}</p>
-        </div>}
+        </div>
       </div>
     </footer>
   );

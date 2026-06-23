@@ -79,9 +79,11 @@ export interface UpdateParticipantPayload {
  * Obtiene todos los participantes con paginación
  * GET /api/participants?page=&rows=
  */
-export const getAll = async (page: number, rows: number): Promise<{ participants: ParticipantResponse[]; count: number }> => {
+export const getAll = async (page: number, rows: number, companyId?: string): Promise<{ participants: ParticipantResponse[]; count: number }> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/participants?page=${page}&rows=${rows}`);
+        let url = `${configAPI.baseURL}/api/participants?page=${page}&rows=${rows}`;
+        if (companyId) url += `&companyId=${encodeURIComponent(companyId)}`;
+        const response = await fetch(url);
         if (!response.ok) return { participants: [], count: 0 };
         return await response.json();
     } catch (error) {
@@ -199,6 +201,23 @@ export const getCountAll = async (): Promise<{ count: number } | null> => {
 };
 
 /**
+ * Obtiene el leaderboard de participantes por puntos
+ * GET /api/participants/leaderboard?limit=
+ */
+export const getLeaderboard = async (limit: number = 5, courseId?: string): Promise<{ leaderboard: any[]; totalCount: number }> => {
+    try {
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (courseId) params.set('courseId', courseId);
+        const response = await fetch(`${configAPI.baseURL}/api/participants/leaderboard?${params}`);
+        if (!response.ok) return { leaderboard: [], totalCount: 0 };
+        return await response.json();
+    } catch (error) {
+        console.error('Error al obtener leaderboard:', error);
+        return { leaderboard: [], totalCount: 0 };
+    }
+};
+
+/**
  * Busca participantes por texto
  * GET /api/participants/search?searchTerm=
  */
@@ -216,7 +235,7 @@ export const search = async (query: string): Promise<ParticipantResponse[]> => {
 // ─── Alias de compatibilidad ─────────────────────────────────────────
 
 /** @deprecated Usar getAll() */
-export const getAllParticipants = async (page: number, rows: number) => getAll(page, rows);
+export const getAllParticipants = async (page: number, rows: number, companyId?: string) => getAll(page, rows, companyId);
 
 /** @deprecated Usar getCountAll() */
 export const getCountAllParticipants = async () => getCountAll();

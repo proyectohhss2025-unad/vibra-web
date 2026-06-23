@@ -6,7 +6,7 @@ import { createPreTest, getPreTestById } from '@/api/preTest';
 import { PreTest, Question, QuestionType, Option } from '@/models/preTest.entity';
 import Loading from '@/components/layouts/loading/loading';
 import './preTest.css';
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useTabs } from '@/services/contexts/tabs-context';
 import { AuthContext } from '@/services/auth';
@@ -20,6 +20,7 @@ type PreTestComponentProps = {
 };
 
 const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
+    const { t } = useTranslation();
     const router = useRouter();
     const { token } = useContext(AuthContext);
     const { closeTabWithRefresh, refreshData, closeTab } = useTabs();
@@ -233,7 +234,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
     return (
         <div className="preTest-container container mx-auto px-4 py-8">
             <h1 className="text-2xl font-bold mb-6">
-                {preTestID ? getSafeKeyFromStorage('Edit Pre-Test') : getSafeKeyFromStorage('Create Pre-Test')}
+                {preTestID ? t('activity.editPreTest') : t('activity.createPreTest')}
             </h1>
 
             <div className="bg-white shadow-md rounded-lg p-6 mb-6">
@@ -241,7 +242,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Título */}
                     <div>
                         <label htmlFor="title" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Title')} *
+                            {t('common.title')} *
                         </label>
                         <div className="mt-2 flex rounded-md shadow-sm">
                             <span className="flex select-none items-center pl-3 text-gray-500 sm:text-sm">preTest.title:</span>
@@ -261,7 +262,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Categoría */}
                     <div>
                         <label htmlFor="category" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Category')}
+                            {t('common.category')}
                         </label>
                         <div className="mt-2">
                             <input
@@ -279,7 +280,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Descripción */}
                     <div className="md:col-span-2">
                         <label htmlFor="description" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Description')} *
+                            {t('common.description')} *
                         </label>
                         <div className="mt-2">
                             <textarea
@@ -298,7 +299,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Dificultad */}
                     <div>
                         <label htmlFor="difficulty" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Difficulty')} (1-5)
+                            {t('common.difficulty')} (1-5)
                         </label>
                         <div className="mt-2">
                             <input
@@ -317,7 +318,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Tiempo límite */}
                     <div>
                         <label htmlFor="timeLimit" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Time Limit')} (minutos)
+                            {t('common.timeLimit')} (minutos)
                         </label>
                         <div className="mt-2">
                             <input
@@ -335,7 +336,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Puntaje mínimo */}
                     <div>
                         <label htmlFor="passingScore" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Passing Score')} (%)
+                            {t('common.passingScore')} (%)
                         </label>
                         <div className="mt-2">
                             <input
@@ -354,7 +355,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     {/* Etiquetas */}
                     <div>
                         <label htmlFor="tags" className="block text-sm font-medium leading-6 text-gray-900">
-                            {getSafeKeyFromStorage('Tags')} (separados por coma)
+                            {t('common.tags')} (separados por coma)
                         </label>
                         <div className="mt-2">
                             <input
@@ -374,18 +375,18 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
             {/* Sección de preguntas */}
             <div className="bg-white shadow-md rounded-lg p-6 mb-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">{getSafeKeyFromStorage('Questions')} *</h2>
+                    <h2 className="text-xl font-semibold">{t('activity.questions')} *</h2>
                     <button
                         type="button"
                         onClick={handleAddQuestion}
                         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                     >
-                        {getSafeKeyFromStorage('Add Question')}
+                        {t('activity.addQuestion')}
                     </button>
                 </div>
 
                 {questions.length === 0 && (
-                    <p className="text-gray-500 italic">{getSafeKeyFromStorage('No questions added yet')}</p>
+                    <p className="text-gray-500 italic">{t('common.noQuestionsAdded')}</p>
                 )}
 
                 {questions.map((question, qIndex) => (
@@ -397,7 +398,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                                 onClick={() => handleRemoveQuestion(qIndex)}
                                 className="text-red-500 hover:text-red-700"
                             >
-                                {getSafeKeyFromStorage('Remove')}
+                                {t('common.remove')}
                             </button>
                         </div>
 
@@ -405,7 +406,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                             {/* Texto de la pregunta */}
                             <div className="md:col-span-2">
                                 <label htmlFor={`question-${qIndex}-text`} className="block text-sm font-medium text-gray-700">
-                                    {getSafeKeyFromStorage('Question Text')} *
+                                    {t('common.questionText')} *
                                 </label>
                                 <input
                                     type="text"
@@ -420,7 +421,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                             {/* Tipo de pregunta */}
                             <div>
                                 <label htmlFor={`question-${qIndex}-type`} className="block text-sm font-medium text-gray-700">
-                                    {getSafeKeyFromStorage('Question Type')}
+                                    {t('common.questionType')}
                                 </label>
                                 <select
                                     id={`question-${qIndex}-type`}
@@ -428,18 +429,18 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                                     onChange={(e) => handleUpdateQuestion(qIndex, 'type', e.target.value)}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                 >
-                                    <option value={QuestionType.SINGLE_CHOICE}>{getSafeKeyFromStorage('Single Choice')}</option>
-                                    <option value={QuestionType.MULTIPLE_CHOICE}>{getSafeKeyFromStorage('Multiple Choice')}</option>
-                                    <option value={QuestionType.TRUE_FALSE}>{getSafeKeyFromStorage('True/False')}</option>
-                                    <option value={QuestionType.TEXT}>{getSafeKeyFromStorage('Text')}</option>
-                                    <option value={QuestionType.MATCHING}>{getSafeKeyFromStorage('Matching')}</option>
+                                    <option value={QuestionType.SINGLE_CHOICE}>{t('activity.singleChoice')}</option>
+                                    <option value={QuestionType.MULTIPLE_CHOICE}>{t('activity.multipleChoice')}</option>
+                                    <option value={QuestionType.TRUE_FALSE}>{t('activity.trueFalse')}</option>
+                                    <option value={QuestionType.TEXT}>{t('activity.text')}</option>
+                                    <option value={QuestionType.MATCHING}>{t('activity.matching')}</option>
                                 </select>
                             </div>
 
                             {/* Puntos */}
                             <div>
                                 <label htmlFor={`question-${qIndex}-points`} className="block text-sm font-medium text-gray-700">
-                                    {getSafeKeyFromStorage('Points')}
+                                    {t('common.points')}
                                 </label>
                                 <input
                                     type="number"
@@ -461,14 +462,14 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                                     className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                                 />
                                 <label htmlFor={`question-${qIndex}-required`} className="ml-2 block text-sm text-gray-700">
-                                    {getSafeKeyFromStorage('Required')}
+                                    {t('common.required')}
                                 </label>
                             </div>
 
                             {/* Explicación */}
                             <div className="md:col-span-2">
                                 <label htmlFor={`question-${qIndex}-explanation`} className="block text-sm font-medium text-gray-700">
-                                    {getSafeKeyFromStorage('Explanation')}
+                                    {t('common.explanation')}
                                 </label>
                                 <textarea
                                     id={`question-${qIndex}-explanation`}
@@ -486,18 +487,18 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                             question.type === QuestionType.TRUE_FALSE) && (
                                 <div className="mt-4">
                                     <div className="flex justify-between items-center mb-2">
-                                        <h4 className="text-md font-medium">{getSafeKeyFromStorage('Options')}</h4>
+                                        <h4 className="text-md font-medium">{t('common.options')}</h4>
                                         <button
                                             type="button"
                                             onClick={() => handleAddOption(qIndex)}
                                             className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors text-sm"
                                         >
-                                            {getSafeKeyFromStorage('Add Option')}
+                                            {t('common.addOption')}
                                         </button>
                                     </div>
 
                                     {(!question.options || question.options.length === 0) && (
-                                        <p className="text-gray-500 italic text-sm">{getSafeKeyFromStorage('No options added yet')}</p>
+                                        <p className="text-gray-500 italic text-sm">{t('common.noOptionsAdded')}</p>
                                     )}
 
                                     {question.options && question.options.map((option, oIndex) => (
@@ -521,7 +522,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                                                 onClick={() => handleRemoveOption(qIndex, oIndex)}
                                                 className="text-red-500 hover:text-red-700"
                                             >
-                                                {getSafeKeyFromStorage('Remove')}
+{t('common.remove')}
                                             </button>
                                         </div>
                                     ))}
@@ -538,7 +539,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     onClick={handleCancel}
                     className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition-colors"
                 >
-                    {getSafeKeyFromStorage('Cancel')}
+                    {t('common.cancel')}
                 </button>
                 <button
                     type="button"
@@ -546,7 +547,7 @@ const PreTestComponent: React.FC<PreTestComponentProps> = ({ preTestId }) => {
                     disabled={!isFormValid}
                     className={`px-4 py-2 rounded transition-colors ${isFormValid ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                 >
-                    {getSafeKeyFromStorage('Save')}
+                    {t('common.save')}
                 </button>
             </div>
         </div>

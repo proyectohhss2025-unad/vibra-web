@@ -3,13 +3,8 @@
  * Alineado con el backend vibra-api (NestJS) y el modelo Activity
  */
 
-import { config } from '@/config/config';
 import { Activity } from '@/models/activity.entity';
-
-const environment = process.env.NODE_ENV || 'development';
-const configAPI = {
-    baseURL: config[environment].apiDashboard,
-};
+import api from '@/api/axios-instance';
 
 // ─── DTOs ────────────────────────────────────────────────────────────
 
@@ -42,17 +37,12 @@ export interface TodayActivityResponse {
 
 // ─── Funciones API ────────────────────────────────────────────────────
 
-/**
- * Obtiene todas las actividades con paginación
- * GET /api/activities/all?page=&limit=
- */
 export const getAll = async (page: number, limit: number): Promise<{ docs: Activity[]; totalDocs: number }> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/activities/all?page=${page}&limit=${limit}`);
-        const data = await response.json();
+        const res = await api.get('/api/activities/all', { params: { page, limit } });
         return {
-            docs: data.docs || [],
-            totalDocs: data.totalDocs || 0,
+            docs: res.data?.docs || [],
+            totalDocs: res.data?.totalDocs || 0,
         };
     } catch (error) {
         console.error('Error al obtener actividades:', error);
@@ -66,9 +56,8 @@ export const getAll = async (page: number, limit: number): Promise<{ docs: Activ
  */
 export const getActivityById = async (id: string): Promise<Activity | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/activities/${id}`);
-        if (!response.ok) return null;
-        return await response.json();
+        const res = await api.get(`/api/activities/${id}`);
+        return res.data;
     } catch (error) {
         console.error('Error al obtener actividad por ID:', error);
         return null;
@@ -80,45 +69,21 @@ export const getActivityById = async (id: string): Promise<Activity | null> => {
  * POST /api/activities
  */
 export const createActivity = async (data: CreateActivityPayload): Promise<Activity | null> => {
-    try {
-        const body = {
-            title: data.title,
-            description: data.description,
-            emotion: data.emotion,
-            difficulty: data.difficulty ?? 3,
-            isActive: data.isActive ?? true,
-            resources: data.resources ?? [],
-            questions: data.questions ?? [],
-            schedule: data.schedule,
-            type: data.type ?? 'evento_personal',
-            tips: data.tips ?? [],
-            games: data.games ?? [],
-        };
-
-        console.log('[API] createActivity payload:', JSON.stringify(body, null, 2));
-
-        const response = await fetch(`${configAPI.baseURL}/api/activities`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[API] Error al crear actividad:', response.status, errorText);
-            let cleanMsg: string;
-            try {
-                const parsed = JSON.parse(errorText);
-                cleanMsg = parsed.message || parsed.error || errorText.slice(0, 300);
-            } catch { cleanMsg = errorText.slice(0, 300); }
-            throw new Error(`${cleanMsg}`);
-        }
-        const result = await response.json();
-        console.log('[API] createActivity respuesta:', result?._id);
-        return result;
-    } catch (error) {
-        console.error('[API] Error en createActivity:', error);
-        throw error;
-    }
+    const body = {
+        title: data.title,
+        description: data.description,
+        emotion: data.emotion,
+        difficulty: data.difficulty ?? 3,
+        isActive: data.isActive ?? true,
+        resources: data.resources ?? [],
+        questions: data.questions ?? [],
+        schedule: data.schedule,
+        type: data.type ?? 'evento_personal',
+        tips: data.tips ?? [],
+        games: data.games ?? [],
+    };
+    const res = await api.post('/api/activities', body);
+    return res.data;
 };
 
 /**
@@ -126,44 +91,21 @@ export const createActivity = async (data: CreateActivityPayload): Promise<Activ
  * PUT /api/activities/:id
  */
 export const updateActivity = async (id: string, data: UpdateActivityPayload): Promise<Activity | null> => {
-    try {
-        const body: Record<string, any> = {};
-        if (data.title !== undefined) body.title = data.title;
-        if (data.description !== undefined) body.description = data.description;
-        if (data.emotion !== undefined) body.emotion = data.emotion;
-        if (data.difficulty !== undefined) body.difficulty = data.difficulty;
-        if (data.isActive !== undefined) body.isActive = data.isActive;
-        if (data.resources !== undefined) body.resources = data.resources;
-        if (data.questions !== undefined) body.questions = data.questions;
-        if (data.schedule !== undefined) body.schedule = data.schedule;
-        if (data.type !== undefined) body.type = data.type;
-        if (data.tips !== undefined) body.tips = data.tips;
-        if (data.games !== undefined) body.games = data.games;
+    const body: Record<string, any> = {};
+    if (data.title !== undefined) body.title = data.title;
+    if (data.description !== undefined) body.description = data.description;
+    if (data.emotion !== undefined) body.emotion = data.emotion;
+    if (data.difficulty !== undefined) body.difficulty = data.difficulty;
+    if (data.isActive !== undefined) body.isActive = data.isActive;
+    if (data.resources !== undefined) body.resources = data.resources;
+    if (data.questions !== undefined) body.questions = data.questions;
+    if (data.schedule !== undefined) body.schedule = data.schedule;
+    if (data.type !== undefined) body.type = data.type;
+    if (data.tips !== undefined) body.tips = data.tips;
+    if (data.games !== undefined) body.games = data.games;
 
-        console.log('[API] updateActivity payload:', JSON.stringify(body, null, 2));
-
-        const response = await fetch(`${configAPI.baseURL}/api/activities/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('[API] Error al actualizar actividad:', response.status, errorText);
-            let cleanMsg: string;
-            try {
-                const parsed = JSON.parse(errorText);
-                cleanMsg = parsed.message || parsed.error || errorText.slice(0, 300);
-            } catch { cleanMsg = errorText.slice(0, 300); }
-            throw new Error(`${cleanMsg}`);
-        }
-        const result = await response.json();
-        console.log('[API] updateActivity respuesta:', result?._id);
-        return result;
-    } catch (error) {
-        console.error('[API] Error en updateActivity:', error);
-        throw error; // Lanzar para que el formulario lo capture
-    }
+    const res = await api.put(`/api/activities/${id}`, body);
+    return res.data;
 };
 
 /**
@@ -198,11 +140,13 @@ export const updateActivityStatus = async (id: string, isActive: boolean, activi
  * Obtiene el conteo total de actividades
  * GET /api/activities/count-all-activities
  */
-export const getCountAllActivities = async (): Promise<{ count: number } | null> => {
+export const getCountAllActivities = async (dateInit?: string, dateEnd?: string): Promise<{ count: number } | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/activities/count-all-activities`);
-        if (!response.ok) return null;
-        return await response.json();
+        const params: Record<string, string> = {};
+        if (dateInit) params.dateInit = dateInit;
+        if (dateEnd) params.dateEnd = dateEnd;
+        const res = await api.get('/api/activities/count-all-activities', { params });
+        return res.data;
     } catch (error) {
         console.error('Error al obtener conteo de actividades:', error);
         return null;
@@ -215,30 +159,49 @@ export const getCountAllActivities = async (): Promise<{ count: number } | null>
  */
 export const getTodayActivity = async (): Promise<TodayActivityResponse | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/activities/daily/current`);
-        if (!response.ok) return null;
-        return await response.json();
+        const res = await api.get('/api/activities/daily/current');
+        return res.data;
     } catch (error) {
         console.error('Error al obtener actividad del día:', error);
         return null;
     }
 };
 
-/**
- * Obtiene actividades completadas agrupadas por mes
- * GET /api/activities/by-month?year=&courseId=
- */
+export const checkActivityDate = async (date: string, excludeId?: string): Promise<boolean> => {
+    try {
+        const params: Record<string, string> = { date };
+        if (excludeId) params.excludeId = excludeId;
+        const res = await api.get('/api/activities/check-date', { params });
+        return res.data?.exists ?? false;
+    } catch (error) {
+        console.error('Error al verificar fecha:', error);
+        return false;
+    }
+};
+
 export const getActivitiesByMonth = async (year?: number, courseId?: string): Promise<{ month: number; count: number }[]> => {
     try {
-        const y = year ?? new Date().getFullYear();
-        const params = new URLSearchParams({ year: y.toString() });
-        if (courseId) params.append('courseId', courseId);
-        const response = await fetch(`${configAPI.baseURL}/api/activities/by-month?${params}`);
-        if (!response.ok) return [];
-        const data = await response.json();
-        return Array.isArray(data) ? data : [];
+        const params: Record<string, string> = { year: (year ?? new Date().getFullYear()).toString() };
+        if (courseId) params.courseId = courseId;
+        const res = await api.get('/api/activities/by-month', { params });
+        return Array.isArray(res.data) ? res.data : [];
     } catch (error) {
         console.error('Error al obtener actividades por mes:', error);
+        return [];
+    }
+};
+
+/**
+ * Obtiene actividades CREADAS agrupadas por mes
+ * GET /api/activities/created-by-month
+ */
+export const getCreatedActivitiesByMonth = async (year?: number): Promise<{ month: number; count: number }[]> => {
+    try {
+        const params: Record<string, string> = { year: (year ?? new Date().getFullYear()).toString() };
+        const res = await api.get('/api/activities/created-by-month', { params });
+        return Array.isArray(res.data) ? res.data : [];
+    } catch (error) {
+        console.error('Error al obtener actividades creadas por mes:', error);
         return [];
     }
 };
@@ -251,32 +214,65 @@ export const getActivitiesByMonth = async (year?: number, courseId?: string): Pr
  */
 export const getCountByType = async (type: string): Promise<{ count: number } | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/activities/count-by-type?type=${type}`);
-        if (!response.ok) return null;
-        return await response.json();
+        const res = await api.get('/api/activities/count-by-type', { params: { type } });
+        return res.data;
     } catch (error) {
         console.error('Error al obtener conteo por tipo:', error);
         return null;
     }
 };
 
-/**
- * Obtiene el conteo de completaciones registradas hoy
- * GET /api/activity-completions/today-count
- */
 export const getTodayCompletionsCount = async (): Promise<{ count: number } | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/activity-completions/today-count`);
-        if (!response.ok) return null;
-        return await response.json();
+        const res = await api.get('/api/activity-completions/today-count');
+        return res.data;
     } catch (error) {
         console.error('Error al obtener completaciones de hoy:', error);
         return null;
     }
 };
 
+/**
+ * Obtiene las respuestas de usuarios para una actividad
+ * GET /api/activities/:id/responses
+ */
+export const getActivityResponses = async (
+    activityId: string,
+    page = 1,
+    limit = 10,
+    userId?: string,
+    dateFrom?: string,
+    dateTo?: string,
+): Promise<{ data: any[]; total: number }> => {
+    try {
+        const params: Record<string, any> = { page, limit };
+        if (userId) params.userId = userId;
+        if (dateFrom) params.dateFrom = dateFrom;
+        if (dateTo) params.dateTo = dateTo;
+        const res = await api.get(`/api/activities/${activityId}/responses`, { params });
+        return res.data;
+    } catch (error) {
+        console.error('Error al obtener respuestas de actividad:', error);
+        return { data: [], total: 0 };
+    }
+};
+
+/**
+ * Obtiene los usuarios que han respondido una actividad (para filtros)
+ * GET /api/activities/:id/response-users
+ */
+export const getActivityResponseUsers = async (activityId: string): Promise<any[]> => {
+    try {
+        const res = await api.get(`/api/activities/${activityId}/response-users`);
+        return Array.isArray(res.data) ? res.data : [];
+    } catch (error) {
+        console.error('Error al obtener usuarios de respuestas:', error);
+        return [];
+    }
+};
+
 /** @deprecated Usar createActivity con objeto en su lugar */
 export const createActivityLegacy = async (_id: string, name: string, description: string, status: string, startDate: Date, endDate: Date, assignedUsers: any[], priority: string, createdBy: string) => {
     console.warn('createActivityLegacy está obsoleto, usar createActivity(data)');
-    return createActivity({ title: name, description, emotion: '', createdBy });
+    return createActivity({ title: name, description: '', emotion: '', createdBy });
 };

@@ -2,8 +2,6 @@ import { config } from '@/config/config';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -21,7 +19,7 @@ export const fileUpload = async (formData: any, inFolder: boolean) => {
         });
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -31,7 +29,7 @@ export const getFilesInGridfsById = async (crossingWithActivityLoadId: string) =
         const response = await axios.get(`${configAPI.baseURL}/api/gridfs/files`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }

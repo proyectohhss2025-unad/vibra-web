@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './css/pagination.css'
 import DropdownMenuButton from '@/components/layouts/menu/dropdown-menu-button';
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
+import { useTranslation } from 'react-i18next';
 
 interface PaginationProps {
     currentPage: number;
@@ -18,6 +18,7 @@ const Pagination: React.FC<PaginationProps> = ({
     onPageChange,
     setPageSize
 }) => {
+    const { t } = useTranslation();
     const totalPages = Math.ceil(totalItems / pageSize);
     const [labelSelected, setLabelSelected] = useState('12');
     const [options, setOptions] = useState<any[]>([
@@ -52,7 +53,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 disabled={currentPage === 1}
                 onClick={() => handlePageClick(currentPage - 1)}
             >
-                {getSafeKeyFromStorage('Previous')}
+                {t('common.previous')}
             </button>
             {pageRange.map((page, item) => (
                 <button
@@ -67,7 +68,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 disabled={currentPage === totalPages}
                 onClick={() => handlePageClick(currentPage + 1)}
             >
-                {getSafeKeyFromStorage('Next')}
+                {t('common.next')}
             </button>
 
             <DropdownMenuButton

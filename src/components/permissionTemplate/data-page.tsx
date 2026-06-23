@@ -90,9 +90,6 @@ const PermissionTemplateDataPage: React.FC = () => {
       onRefresh={() => { setCurrentPage(1); loadData(); }}
       onAdd={handleNew}
       addLabel="Agregar Plantilla"
-      searchEntity="permissionTemplate"
-      onSearchData={(results) => setData(results as PermissionTemplate[])}
-      onSearchLoading={setIsLoading}
       emptyMessage="No hay plantillas registradas"
       columns={[
         { key: 'name', label: 'Nombre', render: (t) => t.name, className: 'min-w-[150px] font-medium' },

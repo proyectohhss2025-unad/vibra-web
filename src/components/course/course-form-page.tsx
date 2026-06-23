@@ -5,6 +5,9 @@ import { searchCompanies } from '@/api/company';
 import { searchDocentes } from '@/api/user';
 import { Course } from '@/models/course.entity';
 import SearchableSelect from '@/components/forms/searchable-select';
+import FormField from '@/components/forms/FormField';
+import { useVibraForm } from '@/hooks/useVibraForm';
+import { CourseSchema, type CourseFormData } from '@/schemas';
 import { useTabs } from '@/services/contexts/tabs-context';
 import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { useRouter } from 'next/router';
@@ -23,21 +26,26 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
     const isEditing = !!resolvedCourseId;
     const currentTabId = resolvedCourseId ? `/course/${resolvedCourseId}` : '/course/new';
 
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [companyId, setCompanyId] = useState('');
-    const [selectedCompany, setSelectedCompany] = useState<{ _id: string; name: string; nit?: string; email?: string } | null>(null);
-    const [category, setCategory] = useState('');
-    const [instructorId, setInstructorId] = useState('');
-    const [selectedInstructor, setSelectedInstructor] = useState<{ _id: string; name: string; documentNumber?: string; email?: string } | null>(null);
-    const [maxStudents, setMaxStudents] = useState<number>(0);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [status, setStatus] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [selectedCompany, setSelectedCompany] = useState<any>(null);
+    const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
+
+    const { register, handleSubmit, errors, reset, setValue, watch } = useVibraForm(CourseSchema, {
+        name: '',
+        description: '',
+        companyId: '',
+        instructorId: '',
+        category: '',
+        maxStudents: 0,
+        startDate: '',
+        endDate: '',
+        status: true,
+    });
+
+    const watchStatus = watch('status');
 
     useEffect(() => {
         if (isEditing && resolvedCourseId) {
@@ -45,16 +53,17 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
             getCourseById(resolvedCourseId)
                 .then((course) => {
                     if (course) {
-                        setName(course.name || '');
-                        setDescription(course.description || '');
-                        setCompanyId(course.companyId || '');
-                        setCategory(course.category || '');
-                        setInstructorId(course.instructorId || '');
-                        setMaxStudents(course.maxStudents || 0);
-                        setStartDate(course.startDate ? new Date(course.startDate).toISOString().split('T')[0] : '');
-                        setEndDate(course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : '');
-                        setStatus(course.status !== false);
-                        // Preseleccionar institución con datos resueltos
+                        reset({
+                            name: course.name || '',
+                            description: course.description || '',
+                            companyId: course.companyId || '',
+                            instructorId: course.instructorId || '',
+                            category: course.category || '',
+                            maxStudents: course.maxStudents || 0,
+                            startDate: course.startDate ? new Date(course.startDate).toISOString().split('T')[0] : '',
+                            endDate: course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : '',
+                            status: course.status !== false,
+                        });
                         if (course.companyId && course.companyName) {
                             setSelectedCompany({
                                 _id: course.companyId,
@@ -63,7 +72,6 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
                                 email: course.companyEmail || '',
                             });
                         }
-                        // Preseleccionar instructor con datos resueltos
                         if (course.instructorId && course.instructorName) {
                             setSelectedInstructor({
                                 _id: course.instructorId,
@@ -77,32 +85,24 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
                 .catch(() => setError('Error al cargar el curso'))
                 .finally(() => setIsLoading(false));
         }
-    }, [resolvedCourseId, isEditing]);
+    }, [resolvedCourseId, isEditing, reset]);
 
-    const validate = (): boolean => {
-        if (!name.trim()) { setError('El nombre es obligatorio'); return false; }
-        if (!companyId.trim()) { setError('La institución es obligatoria'); return false; }
-        return true;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleFormSubmit = async (data: CourseFormData) => {
         setError('');
         setSuccess('');
-        if (!validate()) return;
 
         setIsSubmitting(true);
         try {
             const payload: Partial<Course> = {
-                name: name.trim(),
-                description: description.trim() || undefined,
-                companyId: companyId.trim(),
-                category: category.trim() || undefined,
-                instructorId: instructorId.trim() || undefined,
-                maxStudents: maxStudents || undefined,
-                startDate: startDate ? new Date(startDate).toISOString() : undefined,
-                endDate: endDate ? new Date(endDate).toISOString() : undefined,
-                status,
+                name: data.name.trim(),
+                description: data.description.trim() || undefined,
+                companyId: data.companyId.trim(),
+                category: data.category.trim() || undefined,
+                instructorId: data.instructorId.trim() || undefined,
+                maxStudents: data.maxStudents || undefined,
+                startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
+                endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
+                status: data.status,
             };
 
             if (isEditing) {
@@ -111,7 +111,7 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
                 await createCourse(payload);
             }
             setSuccess(isEditing ? 'Curso actualizado exitosamente' : 'Curso creado exitosamente');
-            setTimeout(() => closeTabWithRefresh(currentTabId, refreshData), 1500);
+            setTimeout(() => closeTabWithRefresh(currentTabId, true), 1500);
         } catch (err: any) {
             setError(err.message || 'Error al guardar el curso');
         } finally {
@@ -128,7 +128,7 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
     return (
         <div className="w-full">
             {!success && (
-                <form onSubmit={handleSubmit} className="p-6">
+                <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6">
                     <div className="hidden md:flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-bold tracking-tight">
                             {isEditing ? 'Editar curso' : 'Nuevo curso'}
@@ -137,16 +137,22 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                            <input type="text" value={name} onChange={e => setName(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
-                                placeholder="Nombre del curso" />
+                            <FormField
+                                label="Nombre *"
+                                name="name"
+                                register={register('name')}
+                                error={errors.name}
+                                placeholder="Nombre del curso"
+                            />
                         </div>
                         <div className="col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                            <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)}
+                            <textarea
+                                {...register('description')}
+                                rows={3}
                                 className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
-                                placeholder="Descripción del curso" />
+                                placeholder="Descripción del curso"
+                            />
                         </div>
                         <div>
                             <SearchableSelect
@@ -160,17 +166,23 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
                                     </div>
                                 )}
                                 getOptionValue={(c) => c._id}
-                                value={companyId}
-                                onChange={(val) => setCompanyId(val)}
+                                value={watch('companyId')}
+                                onChange={(val) => setValue('companyId', val)}
                                 initialSelectedItem={selectedCompany}
                                 required
                             />
+                            {errors.companyId && (
+                                <p className="text-xs text-red-500 mt-1">{errors.companyId.message}</p>
+                            )}
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                            <input type="text" value={category} onChange={e => setCategory(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm"
-                                placeholder="Ej: Matemáticas, Ciencias" />
+                            <FormField
+                                label="Categoría"
+                                name="category"
+                                register={register('category')}
+                                error={errors.category}
+                                placeholder="Ej: Matemáticas, Ciencias"
+                            />
                         </div>
                         <div>
                             <SearchableSelect
@@ -184,30 +196,47 @@ const CourseFormPage: React.FC<CourseFormPageProps> = ({ courseId: propCourseId 
                                     </div>
                                 )}
                                 getOptionValue={(u) => u._id}
-                                value={instructorId}
-                                onChange={(val) => setInstructorId(val)}
+                                value={watch('instructorId')}
+                                onChange={(val) => setValue('instructorId', val)}
                                 initialSelectedItem={selectedInstructor}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Máx. estudiantes</label>
-                            <input type="number" min={0} value={maxStudents} onChange={e => setMaxStudents(Number(e.target.value))}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                            <FormField
+                                label="Máx. estudiantes"
+                                name="maxStudents"
+                                register={register('maxStudents', { valueAsNumber: true })}
+                                error={errors.maxStudents}
+                                type="number"
+                                placeholder="0"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
-                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                            <FormField
+                                label="Fecha de inicio"
+                                name="startDate"
+                                register={register('startDate')}
+                                error={errors.startDate}
+                                type="date"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de fin</label>
-                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                                className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                            <FormField
+                                label="Fecha de fin"
+                                name="endDate"
+                                register={register('endDate')}
+                                error={errors.endDate}
+                                type="date"
+                            />
                         </div>
                         <div className="flex items-center">
                             <label className="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" checked={status} onChange={e => setStatus(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                                <input
+                                    type="checkbox"
+                                    checked={watchStatus}
+                                    onChange={(e) => setValue('status', e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                />
                                 Curso activo
                             </label>
                         </div>

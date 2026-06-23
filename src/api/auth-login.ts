@@ -2,8 +2,6 @@ import { config } from '@/config/config';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
 
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -24,7 +22,7 @@ export const authLogin = async (username: string, password: string): Promise<any
         console.log('Response:', response.data);
         return response.data;
     } catch (error) {
-        logger.error('Error:', { error });
+        console.error('Error:', { error });
         return null;
     }
 };
@@ -41,7 +39,7 @@ export const authLogout = async (userId: string): Promise<any> => {
 
         return response.data;
     } catch (error) {
-        logger.error('Error:', { error });
+        console.error('Error:', { error });
         return null;
     }
 };

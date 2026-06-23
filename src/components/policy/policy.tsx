@@ -4,10 +4,12 @@ import { createPolicy, getPolicyById } from '@/api/policy';
 import { useTabs } from '@/services/contexts/tabs-context';
 import FormPageLayout from '@/components/ui/form-page-layout';
 import CardSection from '@/components/ui/card-section';
+import FormField from '@/components/forms/FormField';
+import { useVibraForm } from '@/hooks/useVibraForm';
+import { PolicySchema, type PolicyFormData } from '@/schemas';
 import { useRouter } from 'next/router';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-
 
 type PolicyComponentProps = {
     policyId?: string;
@@ -23,12 +25,17 @@ const PolicyComponent: React.FC<PolicyComponentProps> = ({ policyId }) => {
     const isEditing = !!(resolvedPolicyId && resolvedPolicyId !== 'undefined' && resolvedPolicyId !== 'null');
 
     const [policyID, setPolicyID] = useState('');
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('');
-    const [content, setContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [success, setSuccess] = useState('');
+
+    const { register, handleSubmit, errors, reset, watch } = useVibraForm(PolicySchema, {
+        name: '',
+        description: '',
+        category: '',
+        content: '',
+    });
+
+    const watchName = watch('name');
 
     useEffect(() => {
         const fetchPolicy = async () => {
@@ -37,21 +44,22 @@ const PolicyComponent: React.FC<PolicyComponentProps> = ({ policyId }) => {
                 const response: any = await getPolicyById(resolvedPolicyId);
                 if (response?._id) {
                     setPolicyID(resolvedPolicyId);
-                    setName(response.name || response.title || '');
-                    setDescription(response.description || '');
-                    setCategory(response.category || response.type || '');
-                    setContent(response.content ?? '');
+                    reset({
+                        name: response.name || response.title || '',
+                        description: response.description || '',
+                        category: response.category || response.type || '',
+                        content: response.content ?? '',
+                    });
                 }
             } catch (e: any) {
                 toast.error(e?.message || 'Error al cargar la política');
             }
         };
         fetchPolicy();
-    }, [resolvedPolicyId, isEditing]);
+    }, [resolvedPolicyId, isEditing, reset]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!name.trim()) {
+    const handleFormSubmit = async (data: PolicyFormData) => {
+        if (!data.name.trim()) {
             toast.warning('El nombre es obligatorio');
             return;
         }
@@ -59,7 +67,7 @@ const PolicyComponent: React.FC<PolicyComponentProps> = ({ policyId }) => {
         try {
             const userFromStorage: any = JSON.parse(localStorage.getItem('user') || '{}');
             const response = await createPolicy(
-                policyID, name, description, content, category,
+                policyID, data.name, data.description, data.content, data.category,
                 userFromStorage?.name || 'admin'
             );
             if (response) {
@@ -101,70 +109,66 @@ const PolicyComponent: React.FC<PolicyComponentProps> = ({ policyId }) => {
             title={isEditing ? 'Editar Política' : 'Nueva Política'}
             isEditing={isEditing}
             isSubmitting={isSaving}
-            onSubmit={handleSubmit}
+            onSubmit={handleSubmit(handleFormSubmit)}
             onCancel={handleCancel}
         >
             <CardSection title="Información General" subtitle="Datos básicos de la política">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Nombre <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    className={`w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ${name.trim() ? 'ring-gray-300' : 'ring-red-300'} focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm`}
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Nombre de la política"
-                                />
-                                {!name.trim() && (
-                                    <p className="text-xs text-red-500 mt-1">Campo obligatorio</p>
-                                )}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Categoría
-                                </label>
-                                <input
-                                    className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                    placeholder="Ej: Seguridad, Privacidad"
-                                />
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        label="Nombre"
+                        name="name"
+                        register={register('name')}
+                        error={errors.name}
+                        placeholder="Nombre de la política"
+                    />
+                    <FormField
+                        label="Categoría"
+                        name="category"
+                        register={register('category')}
+                        error={errors.category}
+                        placeholder="Ej: Seguridad, Privacidad"
+                    />
+                </div>
 
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Descripción
-                            </label>
+                <div className="mt-4">
+                    <FormField
+                        label="Descripción"
+                        name="description"
+                        error={errors.description}
+                        placeholder="Breve descripción del propósito de la política"
+                        render={() => (
                             <textarea
+                                {...register('description')}
                                 rows={2}
                                 className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Breve descripción del propósito de la política"
                             />
-                        </div>
-                    </CardSection>
+                        )}
+                    />
+                </div>
+            </CardSection>
 
-                    <CardSection title="Contenido" subtitle="Texto completo de la política">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Contenido <span className="text-red-500">*</span>
-                            </label>
+            <CardSection title="Contenido" subtitle="Texto completo de la política">
+                <div>
+                    <FormField
+                        label="Contenido"
+                        name="content"
+                        error={errors.content}
+                        placeholder="Escriba aquí el contenido de la política."
+                        render={() => (
                             <textarea
+                                {...register('content')}
                                 rows={12}
                                 className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm font-mono"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
                                 placeholder="Escriba aquí el contenido de la política."
                             />
-                            <p className="text-xs text-gray-400 mt-1">
-                                Texto completo de la política que los usuarios deberán aceptar.
-                            </p>
-                        </div>
-                    </CardSection>
-
+                        )}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                        Texto completo de la política que los usuarios deberán aceptar.
+                    </p>
+                </div>
+            </CardSection>
         </FormPageLayout>
     );
 };

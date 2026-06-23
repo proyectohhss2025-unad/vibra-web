@@ -14,6 +14,9 @@ import { toast } from 'sonner';
 import CardSection from '@/components/ui/card-section';
 import Loading from '@/components/layouts/loading/loading';
 import { SaveIcon, XCircleIcon } from 'lucide-react';
+import { useVibraForm } from '@/hooks/useVibraForm';
+import { RoleSchema, type RoleFormData } from '@/schemas';
+import FormField from '@/components/forms/FormField';
 
 type RoleFormProps = {
   roleId?: string;
@@ -28,14 +31,17 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [success, setSuccess] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [templates, setTemplates] = useState<PermissionTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   const isEditing = !!roleId;
+
+  const { register, handleSubmit, errors, reset, setValue, watch } = useVibraForm(RoleSchema, {
+    name: '',
+    description: '',
+    isActive: true,
+    isSuperAdmin: false,
+    permissionTemplate: '',
+  });
 
   useEffect(() => {
     if (!token) {
@@ -45,7 +51,7 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
 
   useEffect(() => {
     getAllPermissionTemplates(1, 50).then((res) => {
-      if (res) setTemplates(res.permissionTemplates || []);
+      if (res) setTemplates(res.data || res.items || res.permissionTemplates || []);
     });
   }, []);
 
@@ -55,35 +61,32 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
     getRoleById(roleId)
       .then((role: Role | null) => {
         if (role) {
-          setName(role.name || '');
-          setDescription(role.description || '');
-          setIsActive(role.isActive !== false);
-          setIsSuperAdmin(role.isSuperAdmin || false);
           const pt = role.permissionTemplate as any;
-          if (pt?._id) setSelectedTemplateId(pt._id);
+          const templateId = pt?._id || (typeof pt === 'string' ? pt : '') || '';
+          reset({
+            name: role.name || '',
+            description: role.description || '',
+            isActive: role.isActive !== false,
+            isSuperAdmin: role.isSuperAdmin || false,
+            permissionTemplate: templateId,
+          });
         }
       })
       .catch(() => toast.error('Error al cargar el rol'))
       .finally(() => setIsLoading(false));
-  }, [roleId]);
+  }, [roleId, reset]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error('El nombre del rol es obligatorio');
-      return;
-    }
-
+  const handleFormSubmit = async (data: RoleFormData) => {
     setIsSaving(true);
     try {
-      const selectedTemplate = templates.find((t) => t._id === selectedTemplateId);
+      const selectedTemplate = templates.find((t) => t._id === data.permissionTemplate);
 
       const payload: any = {
         _id: roleId || '',
-        name: name.trim(),
-        description: description.trim(),
-        isActive,
-        isSuperAdmin,
+        name: data.name.trim(),
+        description: data.description.trim(),
+        isActive: data.isActive,
+        isSuperAdmin: data.isSuperAdmin,
         permissionTemplate: selectedTemplate || null,
         createdBy: user_?.name || '',
       };
@@ -107,7 +110,10 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
     closeTabWithRefresh(`/Role/${roleId || 'new'}`, true);
   };
 
-  const selectedTemplate = templates.find((t) => t._id === selectedTemplateId);
+  const watchPermissionTemplate = watch('permissionTemplate');
+  const watchIsActive = watch('isActive');
+  const watchIsSuperAdmin = watch('isSuperAdmin');
+  const selectedTemplate = templates.find((t) => t._id === watchPermissionTemplate);
 
   if (isLoading) return <Loading />;
 
@@ -140,35 +146,31 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         {/* Información básica */}
         <CardSection title="Información del Rol" subtitle="Datos generales del rol">
           <div className="grid grid-cols-1 gap-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombre <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej: Administrador, Docente, Estudiante"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Descripción
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe el propósito de este rol"
-                rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
-              />
-            </div>
+            <FormField
+              label="Nombre"
+              name="name"
+              register={register('name')}
+              error={errors.name}
+              placeholder="Ej: Administrador, Docente, Estudiante"
+            />
+            <FormField
+              label="Descripción"
+              name="description"
+              error={errors.description}
+              placeholder="Describe el propósito de este rol"
+              render={() => (
+                <textarea
+                  {...register('description')}
+                  placeholder="Describe el propósito de este rol"
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                />
+              )}
+            />
           </div>
         </CardSection>
 
@@ -183,8 +185,8 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
+                  checked={watchIsActive}
+                  onChange={(e) => setValue('isActive', e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -199,8 +201,8 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={isSuperAdmin}
-                  onChange={(e) => setIsSuperAdmin(e.target.checked)}
+                  checked={watchIsSuperAdmin}
+                  onChange={(e) => setValue('isSuperAdmin', e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
@@ -212,8 +214,8 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
                 Plantilla de permisos
               </label>
               <select
-                value={selectedTemplateId}
-                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                value={watchPermissionTemplate}
+                onChange={(e) => setValue('permissionTemplate', e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
               >
                 <option value="">Seleccionar plantilla...</option>
@@ -263,7 +265,7 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleId }) => {
           </button>
           <button
             type="submit"
-            disabled={isSaving || !name.trim()}
+            disabled={isSaving}
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <SaveIcon className="w-4 h-4" />

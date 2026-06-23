@@ -1,20 +1,35 @@
 'use client'
 
 import { useTabs } from "@/services/contexts/tabs-context";
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import GeneralDashboardComponent from "../general-dashboard";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const DynamicTabs: React.FC = () => {
     const { tabs, activeTab, closeTab, setActiveTab, openTab } = useTabs();
     const tabsContainerRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    const updateScrollState = useCallback(() => {
+        const el = tabsContainerRef.current;
+        if (!el) {
+            setCanScrollLeft(false);
+            setCanScrollRight(false);
+            return;
+        }
+        const hasOverflow = el.scrollWidth > el.clientWidth;
+        setCanScrollLeft(hasOverflow && el.scrollLeft > 2);
+        setCanScrollRight(hasOverflow && el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    }, []);
 
     const scrollTabs = (direction: "left" | "right") => {
-        console.log('direction: ', direction);
-        if (tabsContainerRef.current) {
-            const scrollAmount = direction === "left" ? -150 : 150;
-            console.log('scrollAmount: ', scrollAmount);
-            tabsContainerRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-        }
+        const el = tabsContainerRef.current;
+        if (!el) return;
+        const scrollAmount = direction === "left" ? -200 : 200;
+        el.scrollBy({ left: scrollAmount, behavior: "smooth" });
+        // Actualizar estado después del scroll
+        setTimeout(updateScrollState, 100);
     };
 
     useEffect(() => {
@@ -25,55 +40,97 @@ const DynamicTabs: React.FC = () => {
         );
     }, []);
 
+    // Recalcular en cada cambio de tabs y en resize/scroll
+    useEffect(() => {
+        updateScrollState();
+    }, [tabs, updateScrollState]);
+
+    // Hacer scroll automático para mostrar la tab activa
+    useEffect(() => {
+        const el = tabsContainerRef.current;
+        if (!el) return;
+        const activeTabEl = el.querySelector(`[data-tab-id="${activeTab}"]`) as HTMLElement | null;
+        if (activeTabEl) {
+            activeTabEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+            setTimeout(updateScrollState, 150);
+        }
+    }, [activeTab, tabs.length, updateScrollState]);
+
+    useEffect(() => {
+        const el = tabsContainerRef.current;
+        if (!el) return;
+
+        const handleScroll = () => updateScrollState();
+        el.addEventListener("scroll", handleScroll, { passive: true });
+
+        const observer = new ResizeObserver(() => updateScrollState());
+        observer.observe(el);
+        if (el.parentElement) observer.observe(el.parentElement);
+
+        return () => {
+            el.removeEventListener("scroll", handleScroll);
+            observer.disconnect();
+        };
+    }, [updateScrollState]);
+
     return (
         <div className="flex flex-col w-full h-full">
-            <div className="flex items-center border-b border-gray-300">
+            <div className="flex items-center border-b border-gray-300 bg-white rounded-t-md">
+                {/* Flecha izquierda — solo visible cuando hay overflow hacia la izquierda */}
                 <button
-                    onClick={() => {
-                        scrollTabs("left");
-                    }}
-                    className="px-2 py-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
-                    disabled={!tabsContainerRef.current || tabsContainerRef.current.scrollLeft === 0}
+                    onClick={() => scrollTabs("left")}
+                    className={`flex-shrink-0 px-1 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded transition-all ${
+                        canScrollLeft ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                    }`}
+                    tabIndex={canScrollLeft ? 0 : -1}
+                    aria-hidden={!canScrollLeft}
                 >
-                    ←
+                    <ChevronLeft className="h-5 w-5" />
                 </button>
+
                 <div
                     ref={tabsContainerRef}
-                    className="flex space-x-2 overflow-x-auto scrollbar-hide py-1"
+                    className="flex space-x-1 overflow-x-auto scrollbar-hide py-1 flex-1"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {tabs.map((tab) => (
                         <div
                             key={tab.id}
-                            className={`flex items-center space-x-2 px-4 py-1 cursor-pointer rounded ${activeTab === tab.id
-                                ? "bg-blue-100 text-blue-600 border-b-2 border-blue-500"
-                                : "text-gray-700 hover:bg-gray-100"
-                                }`}
+                            data-tab-id={tab.id}
+                            className={`flex items-center space-x-2 px-4 py-1.5 cursor-pointer rounded whitespace-nowrap text-sm transition-colors ${
+                                activeTab === tab.id
+                                    ? "bg-blue-100 text-blue-600 border-b-2 border-blue-500"
+                                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                            }`}
                             onClick={() => setActiveTab(tab.id)}
                         >
                             <span>{tab.title}</span>
-                            <button
-                                className="text-red-500 hover:text-red-700 font-bold"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    closeTab(tab.id);
-                                }}
-                            >
-                                ✕
-                            </button>
+                            {tab.id !== '/Inicio' && (
+                                <button
+                                    className="text-red-400 hover:text-red-600 font-bold text-xs ml-1 rounded-full hover:bg-red-50 w-4 h-4 flex items-center justify-center"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        closeTab(tab.id);
+                                        setTimeout(updateScrollState, 50);
+                                    }}
+                                >
+                                    ✕
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>
 
+                {/* Flecha derecha — solo visible cuando hay overflow hacia la derecha */}
                 <button
                     onClick={() => scrollTabs("right")}
-                    className="px-2 py-1 text-gray-600 hover:text-gray-800 disabled:opacity-50"
-                    disabled={
-                        !tabsContainerRef.current ||
-                        tabsContainerRef.current.scrollLeft + tabsContainerRef.current.clientWidth >=
-                        tabsContainerRef.current.scrollWidth
-                    }
+                    className={`flex-shrink-0 px-1 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded transition-all ${
+                        canScrollRight ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                    }`}
+                    tabIndex={canScrollRight ? 0 : -1}
+                    aria-hidden={!canScrollRight}
                 >
-                    →
+                    <ChevronRight className="h-5 w-5" />
                 </button>
             </div>
 

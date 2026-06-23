@@ -42,7 +42,7 @@ const SearchUser: React.FC<SearchProps> = ({ isOpen, onClose, setUser, disabled,
         if (query.length > 6) {
             const response = await searchByQuery(query);
 
-            if (response.length > 0) {
+            if (response && response.length > 0) {
                 setUser(response);
                 setQuery(response[0].documentNumber);
             } else {

@@ -2,8 +2,6 @@ import { config } from '@/config/config';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -40,14 +38,25 @@ export const createCompany = async (companyData: any, managerData: any) => {
             isMain: companyIsMain
         };
 
-        const response = await axios.post(`${configAPI.baseURL}/api/company`, {
-            ...objData,
-            _id: companyID
-        });
+        // Limpiar campos vacíos que sean ObjectId (evitar CastError en backend)
+        const cleanData = { ...objData };
+        if (!cleanData.userAdmin) delete cleanData.userAdmin;
 
-        return response.data.company;
+        let response;
+        if (companyID) {
+            // Actualización: PATCH /api/company
+            response = await axios.patch(`${configAPI.baseURL}/api/company`, {
+                ...cleanData,
+                _id: companyID,
+            });
+        } else {
+            // Creación: POST /api/company
+            response = await axios.post(`${configAPI.baseURL}/api/company`, cleanData);
+        }
+
+        return response.data.company || response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -64,7 +73,7 @@ export const getCompanyById = async (id: string) => {
 
         return response.data.company;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -81,7 +90,7 @@ export const getCompanyByName = async (name: string) => {
 
         return response.data.company;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -98,7 +107,7 @@ export const searchCompanies = async (searchTerm: string) => {
         // El backend retorna { data: [...], total: N }
         return response.data?.data || response.data || [];
     } catch (error) {
-        logger.error('Error buscando compañías:', error);
+        console.error('Error buscando compañías:', error);
         return [];
     }
 }
@@ -124,7 +133,7 @@ export const searchByQuery = async (query: string) => {
             };
         }
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -134,7 +143,7 @@ export const getAllCompanies = async (currentPage: number, pageSize: number) => 
         const response = await axios.get(`${configAPI.baseURL}/api/company?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -144,7 +153,7 @@ export const getMainCompany = async () => {
         const response = await axios.get(`${configAPI.baseURL}/api/company/main`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -159,7 +168,7 @@ export const setActive = async (_id: string, active: boolean, createdBy: string)
 
         return response.data.company;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }

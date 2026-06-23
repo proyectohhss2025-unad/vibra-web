@@ -1,5 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import { fileUpload } from '@/api/file';
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
 import { UploadIcon } from '@heroicons/react/solid';
 import React, { useState } from 'react';
 
@@ -16,6 +16,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   crossingWithActivityLoadId = '',
   className = 'bg-white rounded-lg border border-dashed border-gray-900/25'
 }) => {
+  const { t } = useTranslation();
   const [file, setFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,7 +60,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               >
                 <span>
                   <UploadIcon style={{ 'float': 'left' }} name="uploadIcon" className="h-6 w-8 text-white-500" color="green" />
-                  {getSafeKeyFromStorage('Select a file')}</span>
+                  {t('common.selectFile')}</span>
                 <input
                   id="sourceFile"
                   name="sourceFile"
@@ -74,7 +75,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 onClick={handleSubmit}
                 className="bg-blue-500 text-white px-4 py-2 ml-3 rounded-lg hover:bg-blue-700"
               >
-                {getSafeKeyFromStorage('Upload')}!
+                {t('common.upload')}!
               </button>
             </div>
           </div>

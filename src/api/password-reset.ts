@@ -1,6 +1,5 @@
 import { config } from '@/config/config';
 import axios from 'axios';
-import logger from '../config/logger-dev';
 
 const environment = process.env.NODE_ENV || 'development';
 
@@ -25,7 +24,7 @@ export const forgotPassword = async (email: string) => {
     );
     return response.data;
   } catch (error) {
-    logger.error('forgotPassword error:', error);
+    console.error('forgotPassword error:', error);
     throw error;
   }
 };
@@ -44,7 +43,7 @@ export const validateResetToken = async (token: string) => {
     );
     return response.data;
   } catch (error) {
-    logger.error('validateResetToken error:', error);
+    console.error('validateResetToken error:', error);
     throw error;
   }
 };
@@ -70,7 +69,7 @@ export const resetPassword = async (
     );
     return response.data;
   } catch (error) {
-    logger.error('resetPassword error:', error);
+    console.error('resetPassword error:', error);
     throw error;
   }
 };

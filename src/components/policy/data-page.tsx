@@ -7,6 +7,7 @@ import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Edit, ToggleLeft } from 'lucide-react';
 import PolicyComponent from './policy';
 
 const PolicyDataPage: React.FC = () => {
@@ -83,7 +84,7 @@ const PolicyDataPage: React.FC = () => {
       onRefresh={() => { setCurrentPage(1); loadData(); }}
       onAdd={handleNew}
       addLabel="Agregar Política"
-      searchEntity="policy"
+      searchEntity="policies"
       onSearchData={(results) => setData(results as Policy[])}
       onSearchLoading={setIsLoading}
       emptyMessage="No hay políticas registradas"
@@ -104,9 +105,9 @@ const PolicyDataPage: React.FC = () => {
       ]}
       rowKey={(p) => p._id!}
       actions={[
-        { icon: '✏️', tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
         {
-          icon: '🔁',
+          icon: <ToggleLeft className="w-5 h-5" />,
           tooltip: 'Activar/Desactivar',
           onClick: handleToggleClick,
           color: 'text-amber-500',

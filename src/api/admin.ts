@@ -2,8 +2,6 @@ import { config } from '@/config/config';
 import { User } from '@/models/user.entity';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -23,7 +21,7 @@ export const startGenerateBackups = async () => {
 
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -40,7 +38,7 @@ export const startGenerateNotification = async () => {
 
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -57,7 +55,7 @@ export const deleteAllDocumentsByTest = async () => {
 
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -77,8 +75,27 @@ export const getAvailableTags = async (): Promise<string[]> => {
         const data = await response.json();
         return data.tags || [];
     } catch (error) {
-        logger.error('Error fetching available tags:', error);
+        console.error('Error fetching available tags:', error);
         return [];
+    }
+};
+
+export const getAllIdeas = async (page = 1, limit = 200): Promise<{ data: any[]; total: number } | null> => {
+    try {
+        const token = getSafeKeyFromStorage('token');
+        const response = await fetch(`${configAPI.baseURL}/api/ideas?page=${page}&limit=${limit}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching ideas:', error);
+        return null;
     }
 };
 
@@ -102,7 +119,7 @@ export const getIdeasStatus = async (): Promise<{
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
-        logger.error('Error fetching ideas status:', error);
+        console.error('Error fetching ideas status:', error);
         return null;
     }
 }

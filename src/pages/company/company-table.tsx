@@ -6,7 +6,7 @@ import React from 'react';
 const CompanyTablePage: React.FC = () => {
   return (
     <AuthProvider>
-      <RequirePagePermission requiredSerial="10">
+      <RequirePagePermission requiredSerial="PERM-0039">
         <main className="flex min-h-screen flex-col items-center justify-between p-4 pt-0 mb-14" >
           <DataPageCompany />
         </main>

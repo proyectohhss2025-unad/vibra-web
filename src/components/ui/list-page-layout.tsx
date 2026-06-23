@@ -52,6 +52,8 @@ interface ListPageLayoutProps<T> {
   /** Callback para cuando Search actualiza los datos (pasa los resultados al padre) */
   onSearchData?: (data: any[]) => void;
   onSearchLoading?: (loading: boolean) => void;
+  /** Filtro adicional que se muestra debajo del header, alineado a la derecha */
+  filter?: React.ReactNode;
   emptyMessage?: string;
   deleteConfirm?: DeleteConfirm | null;
 }
@@ -75,6 +77,7 @@ function ListPageLayout<T extends Record<string, any>>({
   searchEntity,
   onSearchData,
   onSearchLoading,
+  filter,
   emptyMessage = 'No hay registros',
   deleteConfirm = null,
 }: ListPageLayoutProps<T>) {
@@ -103,7 +106,7 @@ function ListPageLayout<T extends Record<string, any>>({
               <h3 className="text-xl font-semibold">{title}</h3>
               <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-start gap-2">
               {onSearchData && onSearchLoading && searchEntity && (
                 <Search
                   isOpen={false}
@@ -112,19 +115,24 @@ function ListPageLayout<T extends Record<string, any>>({
                   entity={searchEntity}
                   setIsLoading={onSearchLoading}
                 >
-                  <RefreshIcon
-                    className="h-7 w-7 text-blue-600 cursor-pointer hover:text-green-500"
+                  <button
+                    type="button"
                     onClick={onRefresh}
-                  />
+                    title="Refrescar datos"
+                    className="flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-[7px] text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-blue-600 hover:border-blue-400 transition-all duration-150 whitespace-nowrap"
+                  >
+                    <RefreshIcon className="h-4 w-4" />
+                  </button>
                 </Search>
               )}
               {onAdd && (
                 <button onClick={onAdd}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 whitespace-nowrap">
-                  <PlusCircleIcon className="h-5 w-5 text-white" />
+                  className="flex items-center gap-2 rounded-md bg-blue-600 px-5 py-[7px] text-sm font-semibold text-white shadow-sm hover:bg-blue-500 whitespace-nowrap transition-all duration-150 mt-2">
+                  <PlusCircleIcon className="h-4 w-4 text-white" />
                   {addLabel}
                 </button>
               )}
+              {filter}
             </div>
           </div>
 
@@ -138,7 +146,7 @@ function ListPageLayout<T extends Record<string, any>>({
                     </th>
                   ))}
                   {actions && actions.length > 0 && (
-                    <th className="px-3 py-2 w-24 text-right">Acciones</th>
+                    <th className="px-3 py-2 w-24 text-right">Acc.</th>
                   )}
                 </tr>
               </thead>
@@ -174,7 +182,7 @@ function ListPageLayout<T extends Record<string, any>>({
                                 <button
                                   key={idx}
                                   onClick={() => action.onClick(item)}
-                                  className={`${action.color || 'text-blue-600'} hover:text-opacity-80 text-sm font-medium`}
+                                  className={`${action.color || 'text-blue-600'} hover:brightness-50 transition-all duration-150 text-sm font-medium`}
                                   title={action.tooltip}
                                 >
                                   {action.icon}

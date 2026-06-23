@@ -4,8 +4,6 @@ import axios from 'axios';
 import { PermissionTemplate } from '@/models/permissionTemplate.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -28,7 +26,7 @@ export const createPermissionTemplate = async (permissionTemplate: PermissionTem
 
         return response.data.permissionTemplate;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -39,7 +37,7 @@ export const getPermissionTemplateById = async (id: string) => {
         // El API devuelve el objeto directamente (no envuelto en { permissionTemplate })
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -56,7 +54,7 @@ export const getPermissionTemplateByName = async (name: string) => {
 
         return response.data.permissionTemplate;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -66,7 +64,7 @@ export const searchByQuery = async (query: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/permission-templates/search?searchTerm=${query}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -76,17 +74,17 @@ export const getAllPermissionTemplatesByUser = async (userId: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/userPermissionTemplate/byUser?userId=${userId}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
 
 export const getAllPermissionTemplates = async (currentPage: number, pageSize: number) => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/permission-templates?page=${currentPage}&rows=${pageSize}`);
+        const response = await axios.get(`${configAPI.baseURL}/api/permission-templates?page=${currentPage}&limit=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -96,7 +94,7 @@ export const getAllPermissionTemplatesByCategory = async (permissionTemplateCate
         const response = await axios.get(`${configAPI.baseURL}/api/permission-templates/byCategory?permissionTemplateCategoryId=${permissionTemplateCategoryId}&page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -106,7 +104,7 @@ export const getAllCategories = async (currentPage: number, pageSize: number) =>
         const response = await axios.get(`${configAPI.baseURL}/api/permissionTemplateCategory/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -121,7 +119,7 @@ export const updateStatusPermissionTemplate = async (permissionTemplateId: strin
 
         return response.data.permissionTemplate;
     } catch (error) {
-        logger.error('Error updating permission template status with error:', { error });
+        console.error('Error updating permission template status with error:', { error });
         return null;
     }
 }
@@ -136,7 +134,7 @@ export const softDeletePermissionTemplate = async (permissionTemplateId: string)
 
         return response.data.permissionTemplate;
     } catch (error) {
-        logger.error('Error deleting permission template with error:', { error });
+        console.error('Error deleting permission template with error:', { error });
         return null;
     }
 }
@@ -150,7 +148,7 @@ export const addPermissionToTemplate = async (permissionId: string, permissionTe
         });
         return response.data;
     } catch (error) {
-        logger.error('Error adding permission to template: ', { error });
+        console.error('Error adding permission to template: ', { error });
         return null;
     }
 }

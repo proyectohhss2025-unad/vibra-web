@@ -7,11 +7,12 @@ import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Edit } from 'lucide-react';
 import UserComponent from './user';
 
 const UserDataPage: React.FC = () => {
   const router = useRouter();
-  const { openTab } = useTabs();
+  const { openTab, refreshData } = useTabs();
 
   const [isLoading, setIsLoading] = useState(false);
   const [data, setData] = useState<User[]>([]);
@@ -34,6 +35,7 @@ const UserDataPage: React.FC = () => {
   };
 
   useEffect(() => { loadData(); }, [currentPage, pageSize]);
+  useEffect(() => { loadData(); }, [refreshData]);
 
   const handleEdit = (user: User) => {
     const id = user?._id ? String(user._id) : '';
@@ -65,7 +67,7 @@ const UserDataPage: React.FC = () => {
       onRefresh={() => { setCurrentPage(1); loadData(); }}
       onAdd={handleNew}
       addLabel="Agregar Usuario"
-      searchEntity="user"
+      searchEntity="users"
       onSearchData={(results) => setData(results as User[])}
       onSearchLoading={setIsLoading}
       emptyMessage="No hay usuarios registrados"
@@ -78,7 +80,7 @@ const UserDataPage: React.FC = () => {
       ]}
       rowKey={(u) => u._id!}
       actions={[
-        { icon: '✏️', tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
       ]}
     />
   );

@@ -7,7 +7,7 @@ const AnimatedIcon: React.FC<{ icon: string, itemMenuChildProps: any }> = ({ ico
         <div className="relative flex items-center mr-2.5">
             <svg
                 id={icon}
-                className="h-8 w-8"
+                className="h-7 w-7"
                 viewBox="0 0 12 12"
                 fill="none"
                 stroke="currentColor"

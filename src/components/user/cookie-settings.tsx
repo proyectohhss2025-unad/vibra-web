@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/registry/new-york/ui/card"
 import { Label } from "@/registry/new-york/ui/label"
-import { getSafeKeyFromStorage } from "@/utils/safe-token-storage"
+import { useTranslation } from 'react-i18next';
 import { ArrowCircleLeftIcon, BackspaceIcon, InformationCircleIcon, SaveAsIcon } from "@heroicons/react/outline"
 import { DoorClosedIcon, RouteOffIcon } from "lucide-react"
 import { useState } from "react"
@@ -19,6 +19,7 @@ import Modal from "../layouts/modal/modal"
 import CurrentDateTime from "../utils/current-datetime"
 
 export function UserCookieSettings() {
+  const { t } = useTranslation();
   const [debitNoteId_, setDebitNoteId_] = useState<any>('');
   const [activityIsInternal, setActivityIsInternal] = useState<boolean>(false);
   const [showModal, setShowModal] = useState(false);
@@ -145,7 +146,7 @@ export function UserCookieSettings() {
         <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
           <div className="col-span-full flex items-center">
             <InformationCircleIcon name="mail" className="h-6 w-10 text-red-500" />
-            <p className="text-gray-500">{getSafeKeyFromStorage('You want to perform this action.')}</p>
+            <p className="text-gray-500">{t('common.youWantToPerformThisAction')}</p>
           </div>
           <div className="col-span-full text-sm">
             <p className="text-gray-500">Esta acción borra todos los datos de colleciones dinámicas del sistema. Por favor, uselo solo en un ambiente de pruebas.</p>
@@ -171,7 +172,7 @@ export function UserCookieSettings() {
             onClick={handleChangeSoftDelete}
             className={`rounded-md bg-blue-600 px-3 py-2 pl-12 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600`}
           >
-            {getSafeKeyFromStorage('Yes')}
+            {t('common.yes')}
           </button>
         </div>
       </div>

@@ -1,10 +1,4 @@
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/registry/new-york/ui/avatar"
-import { Button } from "@/registry/new-york/ui/button"
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -18,6 +12,8 @@ import { AuthContext } from "@/services/auth";
 import { getSafeKeyObjectFromStorage } from "@/utils/safe-token-storage";
 import { useRouter } from "next/router";
 import { useTabs } from "@/services/contexts/tabs-context";
+import { AdminCookieSettings } from "@/components/admin/cookie-settings";
+import { Cog } from "lucide-react";
 import ProfileComponent from "./profile";
 import { useContext, useEffect, useState } from "react";
 
@@ -54,12 +50,9 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={`/avatars/${user?.avatar}`} alt="avatarUser" />
-            <AvatarFallback>{user?.username}</AvatarFallback>
-          </Avatar>
-        </Button>
+        <button className="relative h-8 w-8 rounded-full flex items-center justify-center bg-transparent hover:bg-gray-100 transition-colors border-0">
+          <Cog className="h-5 w-5 !text-gray-600 hover:!text-gray-900" />
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 gap-y-2" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
@@ -76,11 +69,15 @@ export function UserNav() {
             Perfil
             <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            Configuración
-            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
-          </DropdownMenuItem>
-          <DropdownMenuItem>Cambiar de usuario</DropdownMenuItem>
+          {(() => {
+            const roleName = typeof user?.role === 'object' ? user?.role?.name : user?.role;
+            return roleName?.toLowerCase() === 'super admin' ? (
+              <DropdownMenuItem onClick={() => openTab('/seguridad', 'Seguridad', <AdminCookieSettings />)}>
+                Configuración
+                <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            ) : null;
+          })()}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>

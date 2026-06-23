@@ -4,8 +4,6 @@ import axios from 'axios';
 import { Role } from '@/models/role.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -23,50 +21,44 @@ export const createRole = async (role: Role) => {
             isSuperAdmin: role.isSuperAdmin,
             isActive: role.isActive,
             createdBy: user_?.name
-        }
-        const response = await axios.post(`${configAPI.baseURL}/api/role`, {
-            ...role_,
-            _id: role._id,
-            editedBy: user_?.name
-        });
+        };
 
-        return response.data.role;
+        // Si tiene _id es una actualización (PUT), si no es creación (POST)
+        if (role._id) {
+            const response = await axios.put(`${configAPI.baseURL}/api/roles`, {
+                ...role_,
+                _id: role._id,
+                editedBy: user_?.name
+            });
+            return response.data;
+        } else {
+            const response = await axios.post(`${configAPI.baseURL}/api/roles`, role_);
+            return response.data;
+        }
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
 
 export const getRoleById = async (id: string) => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/id`, {
-            id,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await axios.get(`${configAPI.baseURL}/api/roles/${id}`);
 
-        return response.data.role;
+        return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
 
 export const getRoleByName = async (name: string) => {
     try {
-        const response = await axios.post(`${configAPI.baseURL}/name`, {
-            name,
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        const response = await axios.get(`${configAPI.baseURL}/api/roles/name/${encodeURIComponent(name)}`);
 
-        return response.data.role;
+        return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -76,7 +68,7 @@ export const searchByQuery = async (query: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/role/search?searchTerm=${query}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -86,17 +78,17 @@ export const getAllRolesByUser = async (userId: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/userRole/byUser?userId=${userId}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
 
 export const getAllRoles = async (currentPage: number, pageSize: number) => {
     try {
-        const response = await axios.get(`${configAPI.baseURL}/api/roles?page=${currentPage}&rows=${pageSize}`);
+        const response = await axios.get(`${configAPI.baseURL}/api/roles?page=${currentPage}&limit=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -106,7 +98,7 @@ export const getAllRolesByCategory = async (roleCategoryId: string, currentPage:
         const response = await axios.get(`${configAPI.baseURL}/api/roles/byCategory?roleCategoryId=${roleCategoryId}&page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -116,7 +108,7 @@ export const getAllCategories = async (currentPage: number, pageSize: number) =>
         const response = await axios.get(`${configAPI.baseURL}/api/roleCategory/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -131,7 +123,7 @@ export const updateStatusRole = async (roleId: string, isActive: boolean) => {
 
         return response.data.role;
     } catch (error) {
-        logger.error('Error updating role status with error:', { error });
+        console.error('Error updating role status with error:', { error });
         return null;
     }
 }
@@ -146,7 +138,7 @@ export const softDeleteRole = async (roleId: string) => {
 
         return response.data.role;
     } catch (error) {
-        logger.error('Error deleting role with error:', { error });
+        console.error('Error deleting role with error:', { error });
         return null;
     }
 }

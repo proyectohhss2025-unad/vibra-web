@@ -9,7 +9,9 @@ import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
 import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { Edit, ToggleLeft } from 'lucide-react';
 import CompanyComponent from './company';
+import { maskFormatPhoneNumber } from '@/utils/number';
 
 const CompanyDataPage: React.FC = () => {
   const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
@@ -93,7 +95,7 @@ const CompanyDataPage: React.FC = () => {
       columns={[
         { key: 'name', label: 'Nombre', render: (c) => c.name, className: 'min-w-[220px]' },
         { key: 'nit', label: 'NIT', render: (c) => c.nit || '-' },
-        { key: 'phone', label: 'Teléfono', render: (c) => c.phoneNumber || '-' },
+        { key: 'phone', label: 'Teléfono', render: (c) => maskFormatPhoneNumber(String(c.phoneNumber || '')) || '-', className: 'min-w-[160px]' },
         { key: 'email', label: 'Email', render: (c) => c.email || '-' },
         {
           key: 'manager',
@@ -108,6 +110,7 @@ const CompanyDataPage: React.FC = () => {
               {c.isMain ? 'Sí' : 'No'}
             </span>
           ),
+          className: 'w-20 text-center',
         },
         {
           key: 'status',
@@ -121,9 +124,9 @@ const CompanyDataPage: React.FC = () => {
       ]}
       rowKey={(c) => c._id!}
       actions={[
-        { icon: '✏️', tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
         {
-          icon: '🔁',
+          icon: <ToggleLeft className="w-5 h-5" />,
           tooltip: 'Activar/Desactivar',
           onClick: handleToggleClick,
           color: 'text-amber-500',

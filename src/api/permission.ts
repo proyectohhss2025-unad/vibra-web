@@ -3,8 +3,6 @@ import { Permission } from '@/models/permission.entity';
 import { User } from '@/models/user.entity';
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import axios from 'axios';
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -34,7 +32,7 @@ export const createPermission = async (permission: any) => {
             return response.data;
         }
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -44,7 +42,7 @@ export const getPermissionById = async (id: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/permissions/${id}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -61,7 +59,7 @@ export const getPermissionByName = async (name: string) => {
 
         return response.data.permission;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -71,7 +69,7 @@ export const searchByQuery = async (query: string) => {
         const response = await axios.get(`${configAPI.baseURL}/api/permissions/search?searchTerm=${query}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -82,7 +80,7 @@ export const getAllPermissions = async (currentPage?: number, pageSize?: number)
         const response = await axios.get(`${configAPI.baseURL}/api/permissions${params}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -92,7 +90,7 @@ export const getAllPermissionsByCategory = async (permissionCategoryId: string, 
         const response = await axios.get(`${configAPI.baseURL}/api/permissions/byCategory?permissionCategoryId=${permissionCategoryId}&page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -102,7 +100,7 @@ export const getAllCategories = async (currentPage: number, pageSize: number) =>
         const response = await axios.get(`${configAPI.baseURL}/api/permissionCategory/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -119,7 +117,7 @@ export const getMyPermissions = async () => {
     });
     return response.data; // { isSuperAdmin, role, permissions[], serials[] }
   } catch (error) {
-    logger.error('Error fetching my permissions:', error);
+    console.error('Error fetching my permissions:', error);
     return null;
   }
 };
@@ -129,7 +127,7 @@ export const getAllPermissionsByUser = async (userId: string, currentPage: numbe
         const response = await axios.get(`${configAPI.baseURL}/api/user-permissions/user/${userId}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -144,7 +142,7 @@ export const updateStatusPermission = async (permissionId: string, isActive: boo
 
         return response.data;
     } catch (error) {
-        logger.error('Error updating permission status with error:', { error });
+        console.error('Error updating permission status with error:', { error });
         return null;
     }
 }
@@ -160,7 +158,7 @@ export const addPermissionToUser = async (permissionId: string, userId: string, 
 
         return response.data;
     } catch (error) {
-        logger.error('Error assigning permission to user with error:', { error });
+        console.error('Error assigning permission to user with error:', { error });
         throw error;
     }
 }
@@ -175,7 +173,7 @@ export const softDeletePermission = async (permissionId: string) => {
 
         return response.data.permission;
     } catch (error) {
-        logger.error('Error deleting permission with error:', { error });
+        console.error('Error deleting permission with error:', { error });
         return null;
     }
 }
@@ -191,7 +189,7 @@ export const softDeletePermissionToTemplate = async (permissionId: string, userI
 
         return response.data;
     } catch (error) {
-        logger.error('Error deleting permission template assignment with error:', { error });
+        console.error('Error deleting permission template assignment with error:', { error });
         return null;
     }
 }

@@ -1,8 +1,6 @@
 import { config } from '@/config/config';
 import axios from 'axios';
 
-import logger from '../config/logger-dev';
-
 const environment = process.env.NODE_ENV || 'development';
 
 const configAPI = {
@@ -26,7 +24,7 @@ export const createService = async (_id: string, name: string, documentType: any
 
         return response.data.service;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -43,7 +41,7 @@ export const getServiceById = async (id: string) => {
 
         return response.data.service;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -60,7 +58,7 @@ export const getServiceByName = async (name: string) => {
 
         return response.data.service;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -76,7 +74,7 @@ export const searchServiceByQuery = async (query: string) => {
             };
         }
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -86,7 +84,7 @@ export const getAll = async (currentPage: number, pageSize: number) => {
         const response = await axios.get(`${configAPI.baseURL}/api/service/all?page=${currentPage}&rows=${pageSize}`);
         return response.data;
     } catch (error) {
-        logger.error('Error:', error);
+        console.error('Error:', error);
         return null;
     }
 }
@@ -102,7 +100,7 @@ export const getForgotPassword = async (email: string) => {
         });
         return response.data;
     } catch (error) {
-        logger.error('get forgot password error:', error);
+        console.error('get forgot password error:', error);
         return null;
     }
 }

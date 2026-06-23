@@ -3,6 +3,7 @@
 import { getCountAllNotifications } from '@/api/notification';
 import { Badge } from '@/components/ui/badge';
 import { useTabs } from '@/services/contexts/tabs-context';
+import { useTranslation } from 'react-i18next';
 import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
 import { ArrowCircleDownIcon } from '@heroicons/react/outline';
 import Link from 'next/link';
@@ -26,12 +27,29 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
     const router = useRouter();
     const { openTab } = useTabs();
 
+    const syncFromStorage = () => {
+        setExpandedItem(getSafeKeyFromStorage('expandedItem'));
+        const saved = getSafeKeyFromStorage('selectedItem');
+        setSelectedItem(saved || '1'); // '1' = _id de "Inicio" como predeterminado
+    };
+
     useEffect(() => {
-        const a = getSafeKeyFromStorage('expandedItem');
-        const b = getSafeKeyFromStorage('selectedItem');
-        setExpandedItem(a);
-        setSelectedItem(b)
+        syncFromStorage();
     }, [router, hasChildren]);
+
+    // Si nunca se ha guardado un selectedItem, establecer "Inicio" como activo por defecto
+    useEffect(() => {
+        if (!getSafeKeyFromStorage('selectedItem')) {
+            localStorage.setItem('selectedItem', '1');
+        }
+    }, []);
+
+    // Escuchar cambios en la selección del menú (cuando se cierra una tab)
+    useEffect(() => {
+        const handler = () => syncFromStorage();
+        window.addEventListener('sidebar-selection-changed', handler);
+        return () => window.removeEventListener('sidebar-selection-changed', handler);
+    }, []);
 
     const handleItemClick = (child: any) => {
         setExpandedItem(null);
@@ -43,12 +61,18 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
 
         if (href && hasChildren_) {
             const exp = itemId === expandedItem ? null : itemId;
-
             setExpandedItem(exp);
             localStorage.setItem('expandedItem', exp ?? '');
             setHasChildren(hasChildren_);
+            // Marcar padre como seleccionado
+            if (exp) {
+                setSelectedItem(itemId);
+                localStorage.setItem('selectedItem', itemId);
+            }
         }
         if (href && !hasChildren_) {
+            setSelectedItem(itemId);
+            localStorage.setItem('selectedItem', itemId);
             openTab(
                 `/${child.name}`,
                 `${child.label}`,
@@ -58,8 +82,7 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
     };
 
     const handleItemChildClick = (child: any) => {
-        //const exp = itemId === expandedItem ? null : itemId;
-        //setExpandedItem(exp);
+        setSelectedItem(child?._id);
         localStorage.setItem('selectedItem', child?._id);
         openTab(
             `/${child.name}`,
@@ -68,8 +91,9 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
         );
     };
 
-    // Detectar si este item corresponde a la ruta activa
-    const isActive = item.href !== '#' && router.pathname === item.href;
+    // Activo si está seleccionado, expandido o algún hijo está seleccionado
+    const isParentActive = selectedItem === item._id;
+    const hasActiveChild = item.children?.some((c: any) => selectedItem === c._id);
 
     const itemMenuProps: any = {
         color: item.color,
@@ -82,7 +106,7 @@ const ListMenuItem: React.FC<PropsMenuItem> = ({ key_, item, isAuthenticated, is
     if (isAuthenticated) {
         return (
             <li key={`li_${key_}`} className={`text-gray-600 hover:text-white`}>
-                <Link className={`${isCollapsed ? 'h-10 py-1' : 'flex items-center rounded border border-gray-400 mx-3 mt-0'}${isActive ? ' active' : ''}`}
+                <Link className={`${isCollapsed ? 'h-10 py-1' : 'flex items-center rounded border border-gray-400 mx-3 mt-0'}${isParentActive || hasActiveChild ? ' active' : ''}`}
                     href={item.children?.length == 0 ? '#' : '#'}
                     replace={true}
                     scroll={false}
@@ -141,6 +165,7 @@ interface PropsMenuMain {
 }
 
 const MenuMainList: React.FC<PropsMenuMain> = ({ items, isAuthenticated, isCollapsed, setTab }) => {
+    const { t } = useTranslation();
     const [totalNotifications, setTotalNotifications] = useState<string | null>(null);
 
     useEffect(() => {
@@ -150,7 +175,7 @@ const MenuMainList: React.FC<PropsMenuMain> = ({ items, isAuthenticated, isColla
 
     const itemMenuHome: any = {
         href: '/notification/notification-tray',
-        label: getSafeKeyFromStorage('Inbox'),
+        label: t('nav.inbox'),
         labelAux: totalNotifications,
         color: "#EAEAEA",
         name: "layout",
@@ -158,7 +183,7 @@ const MenuMainList: React.FC<PropsMenuMain> = ({ items, isAuthenticated, isColla
         className: `${isCollapsed ? 'h-10 w-10' : 'h-6 w-9'} text-green-500 hover:text-gray-800`,
         icon: 'BellIcon',
         permissionID: "1",
-        description: getSafeKeyFromStorage('Go to main dashboard'),
+        description: t('nav.goToMainDashboard'),
         isActive: true
     };
 

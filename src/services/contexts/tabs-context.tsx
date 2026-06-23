@@ -42,6 +42,13 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({
         window.scrollTo(0, 0);
     };
 
+    const clearSelectedMenuItem = () => {
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('selectedItem');
+            window.dispatchEvent(new CustomEvent('sidebar-selection-changed'));
+        }
+    };
+
     const closeTab = (id: string) => {
         if (tabs.length == 1) {
             return;
@@ -51,6 +58,7 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({
             const remainingTabs = tabs.filter((tab) => tab.id !== id);
             setActiveTab(remainingTabs[remainingTabs.length - 1 || 0]?.id || null);
         }
+        clearSelectedMenuItem();
         window.scrollTo(0, 0);
     };
 
@@ -69,6 +77,7 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({
             if (withRefresh) {
                 setRefreshData((prev) => !prev);
             }
+            clearSelectedMenuItem();
             window.scrollTo(0, 0);
         });
     };

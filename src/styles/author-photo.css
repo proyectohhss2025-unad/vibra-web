@@ -5,26 +5,35 @@
 .author-photo-container {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   margin: 0;
 }
 
+.author-photo-container button {
+  flex-shrink: 0;
+  line-height: 0;
+}
+
 .author-photo-container img {
-  max-width: 70px;
+  width: 48px;
+  height: 48px;
+  max-width: 48px;
   border-radius: 50%;
-  margin-right: 5px;
+  object-fit: cover;
 }
 
 .author-info {
-  text-align: center;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
 }
 
 .author-info h2 {
-  font-size: 1rem !important;
-  margin-bottom: 5px;
+  font-size: 0.85rem !important;
+  margin-bottom: 2px;
 }
 
 .author-info p {
-  font-size: 0.7rem !important;
-  line-height: 1.5;
+  font-size: 0.65rem !important;
+  line-height: 1.3;
 }

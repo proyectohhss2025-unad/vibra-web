@@ -6,14 +6,17 @@ import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMe
 import { useDevice } from "@/services/contexts/device-context"
 import { useTabs } from "@/services/contexts/tabs-context"
 import { CalendarIcon } from "@heroicons/react/solid"
-import { CalendarCogIcon, DatabaseBackupIcon, HomeIcon, Wallet } from "lucide-react"
+import { BarChart3Icon, ClipboardCheckIcon, HomeIcon, ListTodoIcon } from "lucide-react"
 import Link from "next/link"
 import React, { useEffect, useState } from "react"
 import GeneralDashboardComponent from "../general-dashboard"
 import NotificationTray from "../notification-tray"
+import ActivityDataPage from "../activity/data-page"
+import TestListPage from "../test/test-list-page"
+import ReportsPage from "../reports/reports-page"
 //import DashboardReports from "../reports/dashboard-reports"
 import CurrentDateTime from "../utils/current-datetime"
-import CourseListPage from "../course/course-list-page"
+
 
 type MainProps = {
   className: string;
@@ -22,7 +25,7 @@ type MainProps = {
 export default function MainNav({ className }: MainProps) {
   const { openTab } = useTabs();
   const [totalNotificationsToday, setTotalNotificationsToday] = useState(0);
-  const [totalReportsGeneratedToday, setTotalReportsGeneratedToday] = useState(0);
+
   const { isMobile, isTablet } = useDevice();
 
   useEffect(() => {
@@ -57,7 +60,7 @@ export default function MainNav({ className }: MainProps) {
             <NavigationMenuTrigger>Inicio</NavigationMenuTrigger>
             <NavigationMenuContent>
               <ul className="grid gap-3 p-4 w-[340px] md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-                <li className="row-span-3">
+                <li className="row-span-4">
                   <NavigationMenuLink asChild className="bg-blue-200">
                     <a
                       className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-4 no-underline outline-none focus:shadow-md"
@@ -66,7 +69,7 @@ export default function MainNav({ className }: MainProps) {
                       <HomeIcon className="max-h-12 max-w-12 min-h-12 min-w-12 mt-0" />
                       <div className="mb-2 mt-4 text-lg font-medium" onClick={() => {
                         openTab(
-                          `Inicio`,
+                          `/Inicio`,
                           "Inicio",
                           <GeneralDashboardComponent />
                         );
@@ -79,69 +82,46 @@ export default function MainNav({ className }: MainProps) {
                     </a>
                   </NavigationMenuLink>
                 </li>
-                <ListItem href="#" title="Notificaciones de participaciones" onClick={() => {
-                  /*openTab(
-                    `Informes`,
-                    "Informes",
-                    <DashboardReports />
-                  );*/
-                }} >
-                  <div className="flex items-center">
-                    <Wallet className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
-                    Informes y reportes
-                  </div>
-                </ListItem>
-                <ListItem href="#" title="Copias de seguridad" onClick={() => {
+                <ListItem href="#" title="Actividades" onClick={() => {
                   openTab(
-                    `Notificaciones`,
-                    "Notificaciones",
-                    <NotificationTray />
+                    `/Actividades`,
+                    "Actividades",
+                    <ActivityDataPage />
                   );
                 }}>
                   <div className="flex items-center">
-                    <DatabaseBackupIcon className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
-                    Notificaciones de copias de seguridad realizadas por Jobs
+                    <ListTodoIcon className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
+                    Gestión de actividades del sistema
                   </div>
                 </ListItem>
-                <ListItem href="#" title="Alertas de actividades" onClick={() => {
+                <ListItem href="#" title="Tests" onClick={() => {
                   openTab(
-                    `Notificaciones`,
-                    "Notificaciones",
-                    <NotificationTray />
+                    `/Tests`,
+                    "Tests",
+                    <TestListPage />
                   );
                 }}>
                   <div className="flex items-center">
-                    <CalendarCogIcon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
-                    Alertas de actividades
+                    <ClipboardCheckIcon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
+                    Administración de tests y evaluaciones
+                  </div>
+                </ListItem>
+                <ListItem href="#" title="Reportes" onClick={() => {
+                  openTab(
+                    `/Reportes`,
+                    "Reportes",
+                    <ReportsPage />
+                  );
+                }}>
+                  <div className="flex items-center">
+                    <BarChart3Icon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
+                    Reportes de participación
                   </div>
                 </ListItem>
               </ul>
             </NavigationMenuContent>
           </NavigationMenuItem>
-          <NavigationMenuItem>
-            <NavigationMenuTrigger>Acciones</NavigationMenuTrigger>
-            <NavigationMenuContent>
-              <ul className="grid gap-3 p-4 w-[340px] md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                <ListItem
-                  key="Cursos"
-                  title="Cursos"
-                  href="#"
-                  onClick={() => {
-                    openTab(
-                      `/Cursos`,
-                      `Cursos`,
-                      <CourseListPage />
-                    );
-                  }}
-                >
-                  <div className="flex items-center">
-                    <DatabaseBackupIcon className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
-                    Gestión de cursos
-                  </div>
-                </ListItem>
-              </ul>
-            </NavigationMenuContent>
-          </NavigationMenuItem>
+
           {/*<NavigationMenuItem>
             <NavigationMenuTrigger>Participaciones</NavigationMenuTrigger>
             <NavigationMenuContent>
@@ -197,42 +177,6 @@ export default function MainNav({ className }: MainProps) {
                 <h4 className="text-sm font-semibold">Ultimas notificaciones</h4>
                 <p className="text-sm">
                   Durante el día se han creado {totalNotificationsToday} notificaciones de participaciones.
-                </p>
-                <div className="flex items-center pt-2">
-                  <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />{" "}
-                  <span className="text-xs text-muted-foreground">
-                    <CurrentDateTime format="LL" />
-                  </span>
-                </div>
-              </div>
-            </div>
-          </HoverCardContent>
-        </HoverCard>
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <Link
-              href="#"
-              className="text-sm mx-1 text-muted-foreground transition-colors hover:text-secondary text-white bg-blue-500 rounded-md p-2 px-2 hover:text-white font-medium"
-              onClick={() => {
-                /*openTab(
-                  `Informes`,
-                  "Informes",
-                  <DashboardReports />
-                );*/
-              }}>
-              Informes
-            </Link>
-          </HoverCardTrigger>
-          <HoverCardContent className="w-80">
-            <div className="flex justify-between space-x-4">
-              <Avatar>
-                <AvatarImage src="/avatars/05.jpg" />
-                <AvatarFallback>VC</AvatarFallback>
-              </Avatar>
-              <div className="space-y-1">
-                <h4 className="text-sm font-semibold">Actualidad</h4>
-                <p className="text-sm">
-                  En el día se han generado {totalReportsGeneratedToday} {totalReportsGeneratedToday > 1 || totalReportsGeneratedToday === 0 ? "informes" : "informe"}
                 </p>
                 <div className="flex items-center pt-2">
                   <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />{" "}

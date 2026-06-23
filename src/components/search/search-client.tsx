@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import "../../../app/globals.css";
 import DynamicHeroIcon from '../layouts/icon/icon-dinamic';
 import './search.css';
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
+import { useTranslation } from 'react-i18next';
 
 interface SearchProps {
     isOpen: boolean;
@@ -18,6 +18,7 @@ interface SearchProps {
 }
 
 const SearchParticipant: React.FC<SearchProps> = ({ isOpen, onClose, setParticipant, disabled, val, children }) => {
+    const { t } = useTranslation();
     const [show, setShow] = useState(isOpen);
     const [query, setQuery] = useState('');
     const [disabled_, setDisabled_] = useState(disabled);
@@ -121,7 +122,7 @@ const SearchParticipant: React.FC<SearchProps> = ({ isOpen, onClose, setParticip
         <div className="w-full">
             <div className="mt-0 w-full">
                 <div className="flex rounded-md shadow-sm ring-1 ring-inset ring-gray-400 sm:max-w-md w-full bg-white">
-                    <span className="flex justify-start select-none items-center pl-2 pr-2 text-gray-500 sm:text-sm">{getSafeKeyFromStorage('NIT')}: </span>
+                    <span className="flex justify-start select-none items-center pl-2 pr-2 text-gray-500 sm:text-sm">{t('customer.nit')}: </span>
                     <input
                         type="text"
                         name="query"

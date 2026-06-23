@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import Layout from './layout'
 import NestedLayout from '../components/nested-layout'
-import type { NextPageWithLayout } from '../../app/_app'
+import type { NextPageWithLayout } from '@/pages/_app'
  
 const Page: NextPageWithLayout = () => {
   return <p>hello world</p>

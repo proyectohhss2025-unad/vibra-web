@@ -1,4 +1,3 @@
-import { getSafeKeyFromStorage } from '@/utils/safe-token-storage';
 import { MinusIcon } from '@heroicons/react/outline';
 import { ArrowRightIcon, CheckIcon, DocumentReportIcon } from '@heroicons/react/solid';
 import React, { useState } from 'react';
@@ -78,7 +77,7 @@ const AccordionReport: React.FC<ReportItemProps> = ({ reportItems, handleClickIt
                         onClick={() => toggleType(type)}
                     >
                         <h3 className="text-md font-medium text-gray-900">
-                            {getSafeKeyFromStorage(`${type} reports`)}
+                            {'Reportes'}
                         </h3>
                         <svg
                             className={`transform ${activeType === type ? 'rotate-180' : ''

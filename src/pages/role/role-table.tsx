@@ -8,7 +8,7 @@ import React from 'react';
 const RoleTablePage: React.FC = () => {
   return (
     <AuthProvider>
-      <RequirePagePermission requiredSerial="9">
+      <RequirePagePermission requiredSerial="PERM-0001">
         <main className="flex min-h-screen flex-col items-center justify-between p-4 pt-0 mb-14" >
           <RoleDataPage />
         </main>
