@@ -6,9 +6,10 @@ import { useTabs } from '@/services/contexts/tabs-context';
 import { useRouter } from 'next/router';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Users } from 'lucide-react';
 import ListPageLayout from '@/components/ui/list-page-layout';
 import CourseFormPage from './course-form-page';
+import TeacherCourseDetail from './teacher-course-detail';
 
 const CourseListPage: React.FC = () => {
     const router = useRouter();
@@ -51,6 +52,14 @@ const CourseListPage: React.FC = () => {
 
     const handleDeleteClick = (course: Course) => {
         setDeleteConfirm({ show: true, course });
+    };
+
+    const handleManageStudents = (course: Course) => {
+        openTab(
+            `/course/${course._id}/students`,
+            `Estudiantes: ${course.name}`,
+            <TeacherCourseDetail courseId={course._id!} courseName={course.name} />,
+        );
     };
 
     const handleDeleteConfirm = async () => {
@@ -109,6 +118,12 @@ const CourseListPage: React.FC = () => {
             rowKey={(c) => c._id!}
             actions={[
                 { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+                {
+                    icon: <Users className="w-4 h-4" />,
+                    tooltip: 'Estudiantes',
+                    onClick: handleManageStudents,
+                    color: 'text-green-600 hover:text-green-800',
+                },
                 {
                     icon: <Trash2 className="w-4 h-4" />,
                     tooltip: 'Eliminar',

@@ -79,19 +79,18 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   // #region RESOLVED PERMISSIONS (desde GET /api/auth/my-permissions)
   useEffect(() => {
-    const fetchResolvedPermissions = async () => {
-      try {
-        if (token) {
-          const data = await getMyPermissions();
-          if (data) {
-            setResolvedPermissions(data);
-          }
-        }
-      } catch (error) {
-        logger.error('Error fetching resolved permissions:', error);
-      }
-    };
-    fetchResolvedPermissions();
+    if (token) {
+      // Limpiar permisos anteriores para evitar que el sidebar
+      // muestre items del usuario previo mientras carga los nuevos.
+      setResolvedPermissions(null);
+      getMyPermissions()
+        .then((data) => {
+          if (data) setResolvedPermissions(data);
+        })
+        .catch((error) => {
+          logger.error('Error fetching resolved permissions:', error);
+        });
+    }
   }, [token]);
   //#endregion
 
@@ -219,6 +218,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       setToken(null);
       setOtp(null);
       setParticipant(null);
+      setResolvedPermissions(null);
     }
   };
 

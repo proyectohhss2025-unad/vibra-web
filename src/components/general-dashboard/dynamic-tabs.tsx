@@ -2,14 +2,19 @@
 
 import { useTabs } from "@/services/contexts/tabs-context";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import GeneralDashboardComponent from "../general-dashboard";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { DashboardRouter } from "../dashboard/dashboard-router";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
-const DynamicTabs: React.FC = () => {
+interface DynamicTabsProps {
+    roleName?: string;
+}
+
+const DynamicTabs: React.FC<DynamicTabsProps> = ({ roleName }) => {
     const { tabs, activeTab, closeTab, setActiveTab, openTab } = useTabs();
     const tabsContainerRef = useRef<HTMLDivElement>(null);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
+    const hasOpenedInicio = useRef(false);
 
     const updateScrollState = useCallback(() => {
         const el = tabsContainerRef.current;
@@ -23,6 +28,20 @@ const DynamicTabs: React.FC = () => {
         setCanScrollRight(hasOverflow && el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
     }, []);
 
+    // Abrir tab inicial SOLO cuando roleName está definido.
+    // Si se abre sin roleName (ej: permisos aún no cargados), el dashboard
+    // por defecto (GeneralDashboard) queda fijo y nunca se actualiza porque
+    // openTab() NO reemplaza tabs existentes.
+    useEffect(() => {
+        if (!roleName || hasOpenedInicio.current) return;
+        hasOpenedInicio.current = true;
+        openTab(
+            `/Inicio`,
+            "Inicio",
+            <DashboardRouter roleName={roleName} />
+        );
+    }, [roleName, openTab]);
+
     const scrollTabs = (direction: "left" | "right") => {
         const el = tabsContainerRef.current;
         if (!el) return;
@@ -31,14 +50,6 @@ const DynamicTabs: React.FC = () => {
         // Actualizar estado después del scroll
         setTimeout(updateScrollState, 100);
     };
-
-    useEffect(() => {
-        openTab(
-            `/Inicio`,
-            "Inicio",
-            <GeneralDashboardComponent />
-        );
-    }, []);
 
     // Recalcular en cada cambio de tabs y en resize/scroll
     useEffect(() => {
@@ -136,14 +147,25 @@ const DynamicTabs: React.FC = () => {
 
             {/* Tab Content */}
             <div className="scrollbar-div flex-grow bg-gray-100 rounded-b-md p-4" style={{ height: "84vh", overflowY: "auto" }}>
-                {tabs.map((tab) => (
-                    <div
-                        key={tab.id}
-                        className={`${activeTab === tab.id ? "block" : "hidden"}`}
-                    >
-                        {tab.component}
+                {tabs.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-center space-y-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto" />
+                            <p className="text-sm text-muted-foreground">
+                                Cargando panel...
+                            </p>
+                        </div>
                     </div>
-                ))}
+                ) : (
+                    tabs.map((tab) => (
+                        <div
+                            key={tab.id}
+                            className={`${activeTab === tab.id ? "block" : "hidden"}`}
+                        >
+                            {tab.component}
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );

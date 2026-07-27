@@ -232,6 +232,115 @@ export const search = async (query: string): Promise<ParticipantResponse[]> => {
     }
 };
 
+/**
+ * Obtiene estadísticas generales para el dashboard:
+ * total de participantes + datos del último participante activo
+ * GET /api/participants/overview-stats
+ */
+export const getParticipantsOverview = async (): Promise<{
+  count: number;
+  lastParticipant: {
+    participantId: string;
+    nickname: string;
+    avatar?: string;
+    points: number;
+    level: string;
+    currentStreak: number;
+    maxStreak: number;
+    totalActivitiesCompleted: number;
+    lastActivityDate?: string;
+    course?: { _id: string; name: string } | null;
+    lastParticipation: {
+      completedAt: string;
+      activityTitle: string | null;
+      achievedScore: number;
+      plannedScore: number;
+    } | null;
+  } | null;
+} | null> => {
+  try {
+    const response = await fetch(
+      `${configAPI.baseURL}/api/participants/overview-stats`,
+    );
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener overview stats:', error);
+    return null;
+  }
+};
+
+/**
+ * Obtiene estadísticas detalladas de un participante
+ * GET /api/activity-completions/stats/:participantId
+ */
+export const getParticipantStats = async (participantId: string): Promise<{
+  totalParticipations: number;
+  totalAchievedScore: number;
+  totalPlannedScore: number;
+  averagePercent: number;
+  bestScore: number;
+  lastActivityDate: string | null;
+  rankingPosition: number;
+  activities: Array<{
+    completionId: string;
+    activityId: string;
+    activityTitle: string;
+    achievedScore: number;
+    plannedScore: number;
+    percent: number;
+    timeSpent?: number;
+    gamesCompleted?: Array<{ type: string; score: number; maxScore: number }>;
+    completedAt: string;
+  }>;
+} | null> => {
+  try {
+    const response = await fetch(
+      `${configAPI.baseURL}/api/activity-completions/stats/${participantId}`,
+    );
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener stats del participante:', error);
+    return null;
+  }
+};
+
+/**
+ * Obtiene historial de actividades completadas de un participante
+ * GET /api/activity-completions/participant/:participantId
+ */
+export const getParticipantActivityHistory = async (
+  participantId: string,
+  page: number = 1,
+  limit: number = 10,
+): Promise<{
+  data: Array<{
+    _id: string;
+    participant: string;
+    activity: { _id: string; title: string; emotion?: string; difficulty?: number };
+    achievedScore: number;
+    plannedScore: number;
+    timeSpent?: number;
+    gamesCompleted?: Array<{ type: string; score: number; maxScore: number }>;
+    completedAt: string;
+  }>;
+  total: number;
+  page: number;
+  limit: number;
+} | null> => {
+  try {
+    const response = await fetch(
+      `${configAPI.baseURL}/api/activity-completions/participant/${participantId}?page=${page}&limit=${limit}`,
+    );
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener historial del participante:', error);
+    return null;
+  }
+};
+
 // ─── Alias de compatibilidad ─────────────────────────────────────────
 
 /** @deprecated Usar getAll() */

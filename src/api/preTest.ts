@@ -33,6 +33,30 @@ export const getAll = async (page: number, rows: number): Promise<{ preTests: Pr
     }
 };
 
+/**
+ * Obtiene todos los pre-tests de un usuario por su ID (ObjectId como string).
+ * GET /api/pretests/search/user/:userId
+ * Permiso requerido: P-EST-006
+ *
+ * NOTA: En MongoDB los pretests almacenan el _id del usuario como string
+ * en el campo userId. Pasar el _id (ObjectId), NO el documentNumber.
+ */
+export const getByUserId = async (
+  userId: string,
+): Promise<any[]> => {
+  try {
+    const response = await fetch(
+      `${configAPI.baseURL}/api/pretests/search/user/${userId}`,
+    );
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data) ? data : data?.data || data?.pretests || [];
+  } catch (error) {
+    console.error('Error al obtener pre-tests por usuario:', error);
+    return [];
+  }
+};
+
 export const getCountAllPretest = async () => {
     try {
         const response = await fetch(`${configAPI.baseURL}/api/pretests/count-all-pretests`);

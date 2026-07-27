@@ -1,5 +1,4 @@
 import { AuthContext } from '@/services/auth';
-import Image from 'next/image';
 import { memo, useContext } from 'react';
 import '../styles/author-photo.css';
 import { FULL_NAME } from '../utils/constants';
@@ -20,7 +19,7 @@ const AuthorInfoComponent: React.FC<any> = ({ isCollapsed, onAvatarClick }) => {
         className="flex-shrink-0 focus:outline-none"
         title="Ver mi perfil"
       >
-        <Image
+        <img
           src={getAvatarUrl(user?.avatar)}
           alt={FULL_NAME}
           width={48}

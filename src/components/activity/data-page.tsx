@@ -84,6 +84,20 @@ const ActivityDataPage: React.FC = () => {
     return `${day}/${month}/${year}`;
   };
 
+  /** Verifica si la fecha de programación ya pasó (actividad expirada) */
+  const isExpired = (activity: Activity): boolean => {
+    if (!activity.schedule?.date) return false;
+    const scheduleDate =
+      typeof activity.schedule.date === 'string'
+        ? new Date(activity.schedule.date)
+        : activity.schedule.date;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const schedDate = new Date(scheduleDate);
+    schedDate.setHours(0, 0, 0, 0);
+    return schedDate < today;
+  };
+
   const filteredData = statusFilter === 'all'
     ? data
     : data.filter(a => statusFilter === 'active' ? a.isActive !== false : a.isActive === false);
@@ -118,6 +132,7 @@ const ActivityDataPage: React.FC = () => {
         </select>
       }
       emptyMessage="No hay actividades registradas"
+      rowClassName={(a) => isExpired(a) && a.isActive !== false ? 'bg-orange-50' : undefined}
       columns={[
         { key: 'title', label: 'Título', render: (a) => a.title, className: 'min-w-[430px]' },
         {
@@ -136,16 +151,33 @@ const ActivityDataPage: React.FC = () => {
         {
           key: 'schedule',
           label: 'Programación',
-          render: (a) => (a.schedule?.date ? formatDate(a.schedule.date) : '-'),
+          render: (a) => {
+            if (!a.schedule?.date) return <span className="text-gray-400">-</span>;
+            const expired = isExpired(a);
+            return (
+              <span className={expired ? 'text-red-500 font-medium' : ''}>
+                {expired && '⏰ '}
+                {formatDate(a.schedule.date)}
+              </span>
+            );
+          },
         },
         {
           key: 'status',
           label: 'Estado',
-          render: (a) => (
-            <span className={a.isActive !== false ? 'badge-active' : 'badge-inactive'}>
-              {a.isActive !== false ? 'Activo' : 'Inactivo'}
-            </span>
-          ),
+          render: (a) => {
+            if (a.isActive === false) {
+              return <span className="badge-inactive">Inactivo</span>;
+            }
+            if (isExpired(a)) {
+              return (
+                <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-orange-100 text-orange-700">
+                  Expirada
+                </span>
+              );
+            }
+            return <span className="badge-active">Activo</span>;
+          },
           className: 'w-24 text-center',
         },
       ]}

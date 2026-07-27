@@ -1,16 +1,18 @@
 'use client';
 
-import { getAll } from '@/api/user';
+import { getAll, setUserActive } from '@/api/user';
 import { User } from '@/models/user.entity';
+import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import { useTabs } from '@/services/contexts/tabs-context';
 import ListPageLayout from '@/components/ui/list-page-layout';
 import { useRouter } from 'next/router';
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Edit } from 'lucide-react';
+import { Edit, ToggleLeft } from 'lucide-react';
 import UserComponent from './user';
 
 const UserDataPage: React.FC = () => {
+  const user_: User = JSON.parse(getSafeKeyObjectFromStorage('user')) ?? {};
   const router = useRouter();
   const { openTab, refreshData } = useTabs();
 
@@ -19,6 +21,10 @@ const UserDataPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    user: User | null;
+  }>({ show: false, user: null });
 
   const loadData = async () => {
     setIsLoading(true);
@@ -41,6 +47,24 @@ const UserDataPage: React.FC = () => {
     const id = user?._id ? String(user._id) : '';
     if (!id) return;
     openTab(`/Usuario/${id}`, `Editar: ${user.name}`, <UserComponent userId={id} />);
+  };
+
+  const handleToggleClick = (user: User) => {
+    setDeleteConfirm({ show: true, user });
+  };
+
+  const handleToggleConfirm = async () => {
+    if (!deleteConfirm.user?._id) return;
+    try {
+      await setUserActive(deleteConfirm.user._id, !deleteConfirm.user.isActive, user_.name);
+      toast.success(
+        `Usuario ${deleteConfirm.user.isActive ? 'desactivado' : 'activado'} correctamente`,
+      );
+      setDeleteConfirm({ show: false, user: null });
+      loadData();
+    } catch (error) {
+      toast.error('Error al cambiar el estado del usuario');
+    }
   };
 
   const handleNew = () => {
@@ -77,11 +101,40 @@ const UserDataPage: React.FC = () => {
         { key: 'documentNumber', label: 'Documento', render: (u) => u.documentNumber || '-' },
         { key: 'username', label: 'Usuario', render: (u) => u.username || '-' },
         { key: 'role', label: 'Rol', render: (u) => getRoleName(u) },
+        {
+          key: 'status',
+          label: 'Estado',
+          render: (u) => (
+            <span className={u.isActive !== false ? 'badge-active' : 'badge-inactive'}>
+              {u.isActive !== false ? 'Activo' : 'Inactivo'}
+            </span>
+          ),
+        },
       ]}
       rowKey={(u) => u._id!}
       actions={[
         { icon: <Edit className="w-4 h-4" />, tooltip: 'Editar', onClick: handleEdit, color: 'text-blue-600' },
+        {
+          icon: <ToggleLeft className="w-5 h-5" />,
+          tooltip: 'Activar/Desactivar',
+          onClick: handleToggleClick,
+          color: 'text-amber-500',
+        },
       ]}
+      deleteConfirm={
+        deleteConfirm.show
+          ? {
+              show: true,
+              title: deleteConfirm.user?.isActive ? 'Desactivar Usuario' : 'Activar Usuario',
+              message: `¿Está seguro de ${
+                deleteConfirm.user?.isActive ? 'desactivar' : 'activar'
+              } el usuario "${deleteConfirm.user?.name}"?`,
+              variant: deleteConfirm.user?.isActive ? 'danger' : 'warning',
+              onConfirm: handleToggleConfirm,
+              onClose: () => setDeleteConfirm({ show: false, user: null }),
+            }
+          : null
+      }
     />
   );
 };

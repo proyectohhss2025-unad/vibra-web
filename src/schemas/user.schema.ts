@@ -11,7 +11,7 @@ export const UserSchema = z.object({
   phoneNumber: z.string().optional().default(''),
   gender: z.nativeEnum(Gender).optional().default(Gender.MALE),
   birthDate: z.string().optional().default(''),
-  role: z.string().optional().default(''),
+  role: z.string().min(1, 'El rol es obligatorio'),
   company: z.string().optional().default(''),
   password: z.string().optional().default(''),
 });

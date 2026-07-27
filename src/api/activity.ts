@@ -222,7 +222,55 @@ export const getCountByType = async (type: string): Promise<{ count: number } | 
     }
 };
 
-export const getTodayCompletionsCount = async (): Promise<{ count: number } | null> => {
+export interface ActivitiesOverviewResponse {
+    totalCount: number;
+    retosCount: number;
+    lastActivity: {
+        id: string;
+        title: string;
+        type: string;
+        difficulty: number;
+        emotionName?: string | null;
+        scheduleDate?: string | null;
+        createdAt: string;
+    } | null;
+    lastReto: {
+        id: string;
+        title: string;
+        type: string;
+        difficulty: number;
+        scheduleDate?: string | null;
+        createdAt: string;
+    } | null;
+}
+
+export const getActivitiesOverview = async (): Promise<ActivitiesOverviewResponse | null> => {
+    try {
+        const res = await api.get('/api/activities/overview-stats');
+        return res.data;
+    } catch (error) {
+        console.error('Error al obtener overview de actividades:', error);
+        return null;
+    }
+};
+
+export interface TodayCompletionsResponse {
+    count: number;
+    lastCompletion?: {
+        completionId: string;
+        participantId: string;
+        participantNickname: string;
+        participantAvatar?: string;
+        participantLevel: string;
+        participantPoints: number;
+        activityTitle: string;
+        achievedScore: number;
+        plannedScore: number;
+        completedAt: string;
+    } | null;
+}
+
+export const getTodayCompletionsCount = async (): Promise<TodayCompletionsResponse | null> => {
     try {
         const res = await api.get('/api/activity-completions/today-count');
         return res.data;

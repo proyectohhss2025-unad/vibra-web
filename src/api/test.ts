@@ -47,6 +47,20 @@ export const getTestById = async (id: string): Promise<Test | null> => {
 /**
  * Crea un nuevo test
  */
+/**
+ * Obtiene un test por su testId string (ej: "1", "2", "3")
+ * GET /api/tests/by-testid/:testId
+ */
+export const getTestByTestId = async (testId: string): Promise<Test | null> => {
+  try {
+    const res = await api.get(`/api/tests/by-testid/${testId}`);
+    return res.data;
+  } catch (error) {
+    console.error('Error al obtener test por testId:', error);
+    return null;
+  }
+};
+
 export const createTest = async (test: Omit<Test, '_id' | 'createdAt' | 'updatedAt'>): Promise<Test> => {
   try {
     const res = await api.post('/api/tests', test);

@@ -16,7 +16,8 @@ export default function DownloadAppPage() {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (
       typeof window !== 'undefined' ? window.location.origin : 'https://cds.net.co'
     );
-    const downloadUrl = `${siteUrl}/download-app`;
+    const env = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+    const downloadUrl = `${siteUrl}${config[env].apkDownloadPath}`;
 
     QRCode.toDataURL(downloadUrl, {
       width: 160,

@@ -132,6 +132,78 @@ export const getCourseProgress = async (): Promise<{ courseId: string; courseNam
 };
 
 /**
+ * Obtiene los cursos asignados al docente autenticado.
+ * GET /api/courses/my-courses
+ */
+export const getMyCourses = async (): Promise<{
+  courses: any[];
+  length: number;
+}> => {
+  try {
+    const response = await fetch(`${configAPI.baseURL}/api/courses/my-courses`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+      },
+    });
+    if (!response.ok) return { courses: [], length: 0 };
+    const data = await response.json();
+    return { courses: data.courses || [], length: data.length || 0 };
+  } catch (error) {
+    console.error('Error al obtener cursos del docente:', error);
+    return { courses: [], length: 0 };
+  }
+};
+
+/**
+ * Obtiene los estudiantes de un curso con su progreso.
+ * GET /api/courses/:courseId/students
+ */
+export const getCourseStudents = async (
+  courseId: string,
+): Promise<{ students: any[]; length: number }> => {
+  try {
+    const response = await fetch(
+      `${configAPI.baseURL}/api/courses/${courseId}/students`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+      },
+    );
+    if (!response.ok) return { students: [], length: 0 };
+    const data = await response.json();
+    return { students: data.students || [], length: data.length || 0 };
+  } catch (error) {
+    console.error('Error al obtener estudiantes del curso:', error);
+    return { students: [], length: 0 };
+  }
+};
+
+/**
+ * Obtiene estadísticas de progreso de un curso.
+ * GET /api/courses/:courseId/progress
+ */
+export const getCourseProgressStats = async (
+  courseId: string,
+): Promise<any | null> => {
+  try {
+    const response = await fetch(
+      `${configAPI.baseURL}/api/courses/${courseId}/progress`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
+        },
+      },
+    );
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.error('Error al obtener estadísticas del curso:', error);
+    return null;
+  }
+};
+
+/**
  * Elimina un curso (soft delete)
  */
 export const deleteCourse = async (id: string, deletedBy: string = 'admin'): Promise<void> => {

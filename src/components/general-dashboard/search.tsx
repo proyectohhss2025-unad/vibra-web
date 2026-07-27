@@ -28,7 +28,8 @@ const SearchInAllPage: React.FC<SearchProps> = ({ isOpen, onClose, setData, disa
       if (!resolvedPermissions) return true;
       if (resolvedPermissions.isSuperAdmin) return true;
       if (!item.sidebarSerial) return true;
-      return resolvedPermissions.serials.includes(item.sidebarSerial);
+      const serials = Array.isArray(item.sidebarSerial) ? item.sidebarSerial : [item.sidebarSerial];
+      return serials.some((s: string) => resolvedPermissions.serials.includes(s));
     };
 
     sidebarItems.forEach((item: any) => {

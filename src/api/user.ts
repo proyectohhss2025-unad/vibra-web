@@ -50,6 +50,20 @@ export const searchUsers = async (term: string): Promise<{ _id: string; name: st
     }
 }
 
+/**
+ * Busca usuarios por cualquier término (documento, nombre, email).
+ * GET /api/users/search?searchTerm=
+ */
+export const searchByQuery = async (query: string): Promise<any[]> => {
+    try {
+        const res = await api.get('/api/users/search', { params: { searchTerm: query } });
+        return res.data?.data || [];
+    } catch (error) {
+        console.error('Error searching users by query:', error);
+        return [];
+    }
+}
+
 export const getForgotPassword = async (email: string) => {
     try {
         const res = await api.post('/api/user/forgotPassword', { email });
@@ -80,4 +94,43 @@ export const getCountAllUsers = async () => {
         console.error('Error:', error);
         return null;
     }
-}
+};
+
+/**
+ * Activa o desactiva un usuario
+ * PATCH /api/users/active
+ */
+export const setUserActive = async (_id: string, active: boolean, editedBy: string) => {
+    const res = await api.patch('/api/users/active', { _id, active, editedBy });
+    return res.data;
+};
+
+/**
+ * Obtiene estadísticas generales de usuarios para el dashboard:
+ * total de usuarios + datos del último usuario registrado
+ * GET /api/users/overview-stats
+ */
+export const getUsersOverview = async (): Promise<{
+    count: number;
+    lastRegisteredUser: {
+        userId: string;
+        name: string;
+        username: string;
+        email?: string;
+        avatar?: string;
+        role?: { _id: string; name: string } | null;
+        company?: { _id: string; name: string } | null;
+        documentNumber?: string;
+        phoneNumber?: string;
+        gender?: string;
+        createdAt: string;
+    } | null;
+} | null> => {
+    try {
+        const res = await api.get('/api/users/overview-stats');
+        return res.data;
+    } catch (error) {
+        console.error('Error al obtener overview stats de usuarios:', error);
+        return null;
+    }
+};

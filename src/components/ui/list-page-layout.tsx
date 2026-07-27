@@ -56,6 +56,8 @@ interface ListPageLayoutProps<T> {
   filter?: React.ReactNode;
   emptyMessage?: string;
   deleteConfirm?: DeleteConfirm | null;
+  /** Función opcional para agregar clases CSS personalizadas a cada fila según sus datos */
+  rowClassName?: (item: T) => string | undefined;
 }
 
 function ListPageLayout<T extends Record<string, any>>({
@@ -80,6 +82,7 @@ function ListPageLayout<T extends Record<string, any>>({
   filter,
   emptyMessage = 'No hay registros',
   deleteConfirm = null,
+  rowClassName,
 }: ListPageLayoutProps<T>) {
   const { token } = useContext(AuthContext);
   const router = useRouter();
@@ -167,7 +170,7 @@ function ListPageLayout<T extends Record<string, any>>({
                   </tr>
                 ) : (
                   data.map((item) => (
-                    <tr key={rowKey(item)} className="hover:bg-blue-50 border-b">
+                    <tr key={rowKey(item)} className={`hover:bg-blue-50 border-b${rowClassName ? ` ${rowClassName(item)}` : ''}`}>
                       {columns.map((col) => (
                         <td key={col.key} className={`px-3 py-2 ${col.className || ''}`}>
                           {col.render(item)}

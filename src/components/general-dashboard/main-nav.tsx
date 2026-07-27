@@ -8,13 +8,16 @@ import { useTabs } from "@/services/contexts/tabs-context"
 import { CalendarIcon } from "@heroicons/react/solid"
 import { BarChart3Icon, ClipboardCheckIcon, HomeIcon, ListTodoIcon } from "lucide-react"
 import Link from "next/link"
-import React, { useEffect, useState } from "react"
+import React, { useContext, useEffect, useState } from "react"
 import GeneralDashboardComponent from "../general-dashboard"
 import NotificationTray from "../notification-tray"
 import ActivityDataPage from "../activity/data-page"
 import TestListPage from "../test/test-list-page"
 import ReportsPage from "../reports/reports-page"
+import MyParticipations from "../participant/my-participations"
+import MyTestResponses from "../test/my-test-responses"
 //import DashboardReports from "../reports/dashboard-reports"
+import { AuthContext } from "@/services/auth"
 import CurrentDateTime from "../utils/current-datetime"
 
 
@@ -24,7 +27,10 @@ type MainProps = {
 
 export default function MainNav({ className }: MainProps) {
   const { openTab } = useTabs();
+  const { resolvedPermissions } = useContext(AuthContext);
   const [totalNotificationsToday, setTotalNotificationsToday] = useState(0);
+  const roleName = resolvedPermissions?.role?.name;
+  const isStudent = roleName === 'Estudiante';
 
   const { isMobile, isTablet } = useDevice();
 
@@ -82,7 +88,7 @@ export default function MainNav({ className }: MainProps) {
                     </a>
                   </NavigationMenuLink>
                 </li>
-                <ListItem href="#" title="Actividades" onClick={() => {
+                {!isStudent && <ListItem href="#" title="Actividades" onClick={() => {
                   openTab(
                     `/Actividades`,
                     "Actividades",
@@ -93,8 +99,8 @@ export default function MainNav({ className }: MainProps) {
                     <ListTodoIcon className="max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
                     Gestión de actividades del sistema
                   </div>
-                </ListItem>
-                <ListItem href="#" title="Tests" onClick={() => {
+                </ListItem>}
+                {!isStudent && <ListItem href="#" title="Tests" onClick={() => {
                   openTab(
                     `/Tests`,
                     "Tests",
@@ -105,8 +111,32 @@ export default function MainNav({ className }: MainProps) {
                     <ClipboardCheckIcon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
                     Administración de tests y evaluaciones
                   </div>
-                </ListItem>
-                <ListItem href="#" title="Reportes" onClick={() => {
+                </ListItem>}
+                {isStudent && <ListItem href="#" title="Mis participaciones" onClick={() => {
+                  openTab(
+                    `/Mis participaciones`,
+                    "Mis participaciones",
+                    <MyParticipations />
+                  );
+                }}>
+                  <div className="flex items-center">
+                    <ClipboardCheckIcon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
+                    Ver mi historial de actividades
+                  </div>
+                </ListItem>}
+                {isStudent && <ListItem href="#" title="Mis respuestas" onClick={() => {
+                  openTab(
+                    `/Mis respuestas`,
+                    "Mis respuestas",
+                    <MyTestResponses />
+                  );
+                }}>
+                  <div className="flex items-center">
+                    <ClipboardCheckIcon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
+                    Ver mis respuestas a tests
+                  </div>
+                </ListItem>}
+                {!isStudent && <ListItem href="#" title="Reportes" onClick={() => {
                   openTab(
                     `/Reportes`,
                     "Reportes",
@@ -117,7 +147,7 @@ export default function MainNav({ className }: MainProps) {
                     <BarChart3Icon className="font-medium max-h-8 max-w-8 min-h-8 min-w-8 mr-2" />
                     Reportes de participación
                   </div>
-                </ListItem>
+                </ListItem>}
               </ul>
             </NavigationMenuContent>
           </NavigationMenuItem>

@@ -1,10 +1,9 @@
-import Image from 'next/image';
 import { FULL_DESCRIPTION, FULL_NAME, FULL_TAG } from '../../utils/constants';
 
 const ErrorPage = () => {
   return (
     <div className="author-photo-container">
-      <Image
+      <img
         src="https://avatars.githubusercontent.com/u/5626034?v=4"
         alt={FULL_NAME}
         width={800}

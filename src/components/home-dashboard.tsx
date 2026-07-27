@@ -87,7 +87,7 @@ const HomeDashboardComponent: React.FC = () => {
             {isMobile && <div className="grid grid-cols">
                 <div className="grid-cols items-top px-4">
                     <MainNav className="m-6 gap-y-4" />
-                    <DynamicTabs />
+                    <DynamicTabs roleName={resolvedPermissions?.role?.name} />
                 </div>
             </div>}
             <div className="hidden bg-white flex-col md:flex w-full rounded-md">
@@ -149,7 +149,7 @@ const HomeDashboardComponent: React.FC = () => {
                 <div className="flex-1 space-y-4 pt-2">
 
                     {/* INFO: Tabs de carga dinámica de componentes */}
-                    <DynamicTabs />
+                    <DynamicTabs roleName={resolvedPermissions?.role?.name} />
                 </div>
             </div>
         </>

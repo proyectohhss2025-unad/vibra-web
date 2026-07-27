@@ -25,23 +25,29 @@ import { useFilter } from "@/services/contexts/filter-context"
 import { useTabs } from "@/services/contexts/tabs-context"
 import { FORMAT_DATE_SHORT, LOCALE } from "@/utils/constants"
 import { formatDate, getFirstAndLastDayOfYear, getYearCurrent } from "@/utils/dates"
+import { getAvatarUrl } from "@/utils/avatar"
+import SafeAvatar from "./ui/safe-avatar"
 import { formatToLocalCurrency } from "@/utils/money"
 import { getSafeKeyFromStorage, getSafeKeyObjectFromStorage } from "@/utils/safe-token-storage"
 import { Badge } from "@/registry/new-york/ui/badge"
-import { CheckCheckIcon, CircleDollarSignIcon, NotebookTabsIcon, Users, Wallet2Icon } from "lucide-react"
+import { CheckCheckIcon, CircleDollarSignIcon, HandCoins, NotebookTabsIcon, Users, Wallet2Icon } from "lucide-react"
 import { useRouter } from "next/router"
-import { useContext, useEffect, useState } from "react"
+import { useContext, useEffect, useRef, useState } from "react"
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from "recharts"
 import AnalyticsDashboard from "./analytics/analytics-dashboard"
 import CalendarDateRangePicker from "./general-dashboard/date-range-picker"
 import DropdownMenuButton from "./layouts/menu/dropdown-menu-button"
 import ActivityDataPage from "./activity/data-page"
 import ActivityComponent from "./activity/activity"
-import { getCountAllParticipants, getLeaderboard } from "@/api/participant"
-import { getCountAllUsers } from "@/api/user"
+import { getParticipantsOverview, getLeaderboard } from "@/api/participant"
+import ParticipantProfile from "./participant/participant-profile"
+import { getCountAllUsers, getUsersOverview } from "@/api/user"
 import { getCountAllPretest } from "@/api/preTest"
 import UserDataPage from "./user/data-page"
-import { getCountAllActivities, getCountByType, getTodayActivity, getTodayCompletionsCount, getActivitiesByMonth, getCreatedActivitiesByMonth } from "@/api/activity"
+import { getCountAllActivities, getCountByType, getActivitiesOverview, getTodayActivity, getTodayCompletionsCount, getActivitiesByMonth, getCreatedActivitiesByMonth } from "@/api/activity"
+import { StatCardSkeleton } from "./ui/stat-card-skeleton"
+import { ChartSkeleton } from "./ui/chart-skeleton"
+import { ListSkeleton } from "./ui/list-skeleton"
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -63,12 +69,17 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
 
     const [percentTotalParticipants, setPercentTotalParticipants] = useState<number>(0);
     const [totalParticipants, setTotalParticipants] = useState<number>(0);
+    const [lastParticipant, setLastParticipant] = useState<any>(null);
     const [percentTotalActivities, setPercentTotalActivities] = useState<number>(0);
     const [totalActivities, setTotalActivities] = useState<number>(0);
     const [percentTotalUsers, setPercentTotalUsers] = useState<number>(0);
     const [totalUsers, setTotalUsers] = useState<number>();
+    const [lastRegisteredUser, setLastRegisteredUser] = useState<any>(null);
     const [totalCompletionsToday, setTotalCompletionsToday] = useState<number>(0);
+    const [lastTodayCompletion, setLastTodayCompletion] = useState<any>(null);
     const [totalActiveRetos, setTotalActiveRetos] = useState<number>(0);
+    const [lastActivity, setLastActivity] = useState<any>(null);
+    const [lastReto, setLastReto] = useState<any>(null);
     const [percentTotalInPretest, setPercentTotalInPretest] = useState<number>(0);
     const [totalInPretest, setTotalInPretest] = useState<number>(0);
     //const [totalActivities, setTotalActivities] = useState<number>(0);
@@ -104,6 +115,23 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     const router = useRouter();
     const { openTab } = useTabs();
 
+    // Loading states para skeletons del dashboard
+    const [showCardsSkeleton, setShowCardsSkeleton] = useState(true);
+    const [showChartsSkeleton, setShowChartsSkeleton] = useState(true);
+    const [showNotifSkeleton, setShowNotifSkeleton] = useState(true);
+    const cardLoadsDone = useRef(0);
+    const chartLoadsDone = useRef(0);
+
+    const onCardLoaded = () => {
+        cardLoadsDone.current = Math.min(cardLoadsDone.current + 1, 4);
+        if (cardLoadsDone.current >= 4) setShowCardsSkeleton(false);
+    };
+
+    const onChartLoaded = () => {
+        chartLoadsDone.current = Math.min(chartLoadsDone.current + 1, 3);
+        if (chartLoadsDone.current >= 3) setShowChartsSkeleton(false);
+    };
+
     useEffect(() => {
         const saved = Number(getSafeKeyFromStorage('yearFilter'));
         if (saved) setYearFilter(saved);
@@ -123,15 +151,23 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
     const refreshCounts = (from?: Date | null, to?: Date | null) => {
         const dateInit = safeISO(from) || getTodayStr() + 'T00:00:00.000Z';
         const dateEnd = safeISO(to) || getTodayStr() + 'T23:59:59.999Z';
-        getCountAllActivities(dateInit, dateEnd)
-            .then(data => setTotalActivities(data?.count ?? 0));
-        getTodayCompletionsCount()
-            .then(data => setTotalCompletionsToday(data?.count ?? 0));
-        getCountByType('reto')
-            .then(data => setTotalActiveRetos(data?.count ?? 0));
+        return Promise.all([
+            getCountAllActivities(dateInit, dateEnd)
+                .then(data => setTotalActivities(data?.count ?? 0)),
+            getTodayCompletionsCount()
+                .then(data => {
+                    setTotalCompletionsToday(data?.count ?? 0);
+                    setLastTodayCompletion(data?.lastCompletion ?? null);
+                }),
+            getCountByType('reto')
+                .then(data => setTotalActiveRetos(data?.count ?? 0)),
+        ]);
     };
 
-    useEffect(() => { refreshCounts(dateInitFilter, dateEndFilter); }, []);
+    useEffect(() => {
+        refreshCounts(dateInitFilter, dateEndFilter)
+            .finally(onCardLoaded);
+    }, []);
 
     useEffect(() => {
         getTodayActivity()
@@ -153,7 +189,8 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
             .then(data => {
                 if (data?.notifications) setRecentNotifications(data.notifications);
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setShowNotifSkeleton(false));
     }, []);
 
     const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -167,7 +204,8 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                 }));
                 setMonthlyActivities(mapped);
             })
-            .catch(() => setMonthlyActivities([]));
+            .catch(() => setMonthlyActivities([]))
+            .finally(onChartLoaded);
     }, [selectedYear]);
 
     useEffect(() => {
@@ -179,7 +217,8 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                 }));
                 setMonthlyCreated(mapped);
             })
-            .catch(() => setMonthlyCreated([]));
+            .catch(() => setMonthlyCreated([]))
+            .finally(onChartLoaded);
     }, [selectedYear]);
 
     useEffect(() => {
@@ -187,21 +226,41 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
             .then(data => {
                 if (data?.leaderboard) setTopParticipants(data.leaderboard);
             })
-            .catch(() => setTopParticipants([]));
+            .catch(() => setTopParticipants([]))
+            .finally(onChartLoaded);
     }, []);
 
     useEffect(() => {
-        getCountAllParticipants()
+        getParticipantsOverview()
             .then(data => {
-                if (data !== null && data !== undefined) setTotalParticipants(typeof data === 'object' ? (data as any).count ?? 0 : data);
-            });
+                if (data) {
+                    setTotalParticipants(data.count ?? 0);
+                    setLastParticipant(data.lastParticipant ?? null);
+                }
+            })
+            .finally(onCardLoaded);
     }, []);
 
     useEffect(() => {
-        getCountAllUsers()
+        getUsersOverview()
             .then(data => {
-                setTotalUsers(data);
-            });
+                if (data) {
+                    setTotalUsers(data.count ?? 0);
+                    setLastRegisteredUser(data.lastRegisteredUser ?? null);
+                }
+            })
+            .finally(onCardLoaded);
+    }, []);
+
+    useEffect(() => {
+        getActivitiesOverview()
+            .then(data => {
+                if (data) {
+                    setLastActivity(data.lastActivity ?? null);
+                    setLastReto(data.lastReto ?? null);
+                }
+            })
+            .finally(onCardLoaded);
     }, []);
 
     useEffect(() => {
@@ -283,7 +342,7 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
         setIsRange(false);
         // Establecer las fechas al año seleccionado actualmente
         const year = selectedYear || getYearCurrent();
-        const { firstDay, lastDay } = getFirstAndLastDayOfYear(year);
+        const { firstDay, lastDay } = getFirstAndLastDayOfYear(String(year));
         setDateInitFilter(firstDay ?? new Date());
         setDateEndFilter(lastDay ?? new Date());
         refreshCounts(firstDay, lastDay);
@@ -334,7 +393,7 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                         </div>
                     )}
                     <Card className="bg-white rounded-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                             <CardTitle className="text-sm font-medium">
                                 Total actividades
                             </CardTitle>
@@ -344,13 +403,48 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             <div className="text-2xl font-bold">
                                 {totalActivities ?? 0}
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mb-2">
                                 Actividades creadas
                             </p>
+                            {lastActivity ? (
+                                <div className="border-t border-gray-100 pt-2 mt-1">
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Última creada
+                                    </p>
+                                    <div className="flex items-start gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold truncate text-gray-800">
+                                                {lastActivity.title || 'Sin título'}
+                                            </p>
+                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+                                                <span className="capitalize">{lastActivity.type?.replace('_', ' ') || 'actividad'}</span>
+                                                {lastActivity.difficulty && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span>{'⭐'.repeat(lastActivity.difficulty)}</span>
+                                                    </>
+                                                )}
+                                                {lastActivity.emotionName && (
+                                                    <>
+                                                        <span>·</span>
+                                                        <span>{lastActivity.emotionName}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="border-t border-gray-100 pt-2 mt-1">
+                                    <p className="text-[10px] text-gray-400 italic">
+                                        Sin actividades aún
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                             <CardTitle className="text-sm font-medium">
                                 Total participantes
                             </CardTitle>
@@ -360,13 +454,68 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             <div className="text-2xl font-bold">
                                 {totalParticipants ?? 0}
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mb-2">
                                 Participantes registrados
                             </p>
+                            {lastParticipant ? (
+                                <div className="border-t border-gray-100 pt-2 mt-1">
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Último en participar
+                                    </p>
+                                    <div
+                                        className="flex items-center gap-2 cursor-pointer"
+                                        onClick={() => {
+                                            openTab(
+                                                `/Participante/${lastParticipant.participantId}`,
+                                                lastParticipant.nickname || 'Participante',
+                                                <ParticipantProfile
+                                                    participantId={lastParticipant.participantId}
+                                                    nickname={lastParticipant.nickname}
+                                                    avatar={lastParticipant.avatar}
+                                                    level={lastParticipant.level}
+                                                    points={lastParticipant.points}
+                                                    currentStreak={lastParticipant.currentStreak}
+                                                    maxStreak={lastParticipant.maxStreak}
+                                                    totalActivitiesCompleted={lastParticipant.totalActivitiesCompleted}
+                                                    course={lastParticipant.course}
+                                                    lastParticipation={lastParticipant.lastParticipation}
+                                                />
+                                            );
+                                        }}
+                                    >
+                                        <SafeAvatar
+                                            avatar={lastParticipant.avatar}
+                                            name={lastParticipant.nickname || 'Participante'}
+                                            className="w-7 h-7"
+                                            gradient="from-blue-400 to-purple-500"
+                                            ringHover="hover:ring-blue-300"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold truncate text-gray-800">
+                                                {lastParticipant.nickname || 'Participante'}
+                                            </p>
+                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                {lastParticipant.level && (
+                                                    <span className="uppercase font-medium px-1 py-0.5 rounded bg-gray-100">
+                                                        {lastParticipant.level}
+                                                    </span>
+                                                )}
+                                                <span>{lastParticipant.points ?? 0} pts</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="border-t border-gray-100 pt-2 mt-1">
+                                    <p className="text-[10px] text-gray-400 italic">
+                                        Sin participaciones aún
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                             <CardTitle className="text-sm font-medium">
                                 Total usuarios
                             </CardTitle>
@@ -376,13 +525,87 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             <div className="text-2xl font-bold">
                                 {totalUsers ?? 0}
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mb-2">
                                 Usuarios del sistema
                             </p>
+                            <TooltipProvider>
+                                {lastRegisteredUser ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="border-t border-gray-100 pt-2 mt-1 cursor-help">
+                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                                    Último registro
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <SafeAvatar
+                                                        avatar={lastRegisteredUser.avatar}
+                                                        name={lastRegisteredUser.name || lastRegisteredUser.username || 'Usuario'}
+                                                        className="w-7 h-7"
+                                                        gradient="from-emerald-400 to-teal-500"
+                                                        ringHover="hover:ring-emerald-300"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-semibold truncate text-gray-800">
+                                                            {lastRegisteredUser.name || lastRegisteredUser.username || 'Usuario'}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground truncate">
+                                                            {lastRegisteredUser.role?.name || 'Sin rol'}
+                                                            {lastRegisteredUser.createdAt && (
+                                                                <> · {new Date(lastRegisteredUser.createdAt).toLocaleDateString(LOCALE, {
+                                                                    day: '2-digit',
+                                                                    month: 'short',
+                                                                })}
+                                                                </>
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" align="start" className="w-56 p-3 bg-white shadow-xl border rounded-lg">
+                                            <div className="space-y-2 text-xs">
+                                                <p className="font-semibold text-gray-800 text-sm">
+                                                    {lastRegisteredUser.name || lastRegisteredUser.username}
+                                                </p>
+                                                <div className="border-t border-gray-100" />
+                                                <div className="grid grid-cols-1 gap-1.5 text-gray-600">
+                                                    {lastRegisteredUser.username && (
+                                                        <p><span className="text-gray-400">Usuario:</span> @{lastRegisteredUser.username}</p>
+                                                    )}
+                                                    {lastRegisteredUser.email && (
+                                                        <p><span className="text-gray-400">Email:</span> {lastRegisteredUser.email}</p>
+                                                    )}
+                                                    {lastRegisteredUser.role?.name && (
+                                                        <p><span className="text-gray-400">Rol:</span> {lastRegisteredUser.role.name}</p>
+                                                    )}
+                                                    {lastRegisteredUser.company?.name && (
+                                                        <p><span className="text-gray-400">Empresa:</span> {lastRegisteredUser.company.name}</p>
+                                                    )}
+                                                    {lastRegisteredUser.createdAt && (
+                                                        <p><span className="text-gray-400">Registro:</span> {new Date(lastRegisteredUser.createdAt).toLocaleDateString(LOCALE, {
+                                                            day: '2-digit',
+                                                            month: 'long',
+                                                            year: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : (
+                                    <div className="border-t border-gray-100 pt-2 mt-1">
+                                        <p className="text-[10px] text-gray-400 italic">
+                                            Sin usuarios registrados
+                                        </p>
+                                    </div>
+                                )}
+                            </TooltipProvider>
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                             <CardTitle className="text-sm font-medium">
                                 Completaciones hoy
                             </CardTitle>
@@ -392,13 +615,79 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             <div className="text-2xl font-bold">
                                 {totalCompletionsToday}
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground mb-2">
                                 Actividades completadas hoy
                             </p>
+                            <TooltipProvider>
+                                {lastTodayCompletion ? (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="border-t border-gray-100 pt-2 mt-1 cursor-help">
+                                                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                                    Último en completar
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <SafeAvatar
+                                                        avatar={lastTodayCompletion.participantAvatar}
+                                                        name={lastTodayCompletion.participantNickname || 'Participante'}
+                                                        className="w-7 h-7"
+                                                        gradient="from-orange-400 to-pink-500"
+                                                        ringHover="hover:ring-orange-300"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-xs font-semibold truncate text-gray-800">
+                                                            {lastTodayCompletion.participantNickname || 'Participante'}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground truncate">
+                                                            🎯 {lastTodayCompletion.achievedScore}/{lastTodayCompletion.plannedScore}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="bottom" align="start" className="w-56 p-3 bg-white shadow-xl border rounded-lg">
+                                            <div className="space-y-2 text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <SafeAvatar
+                                                        avatar={lastTodayCompletion.participantAvatar}
+                                                        name={lastTodayCompletion.participantNickname || 'Participante'}
+                                                        className="w-8 h-8"
+                                                        gradient="from-orange-400 to-pink-500"
+                                                    />
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">{lastTodayCompletion.participantNickname}</p>
+                                                        {lastTodayCompletion.participantLevel && (
+                                                            <p className="text-gray-500 uppercase text-[10px]">{lastTodayCompletion.participantLevel}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="border-t border-gray-100" />
+                                                <p><span className="text-gray-400">Actividad:</span> {lastTodayCompletion.activityTitle}</p>
+                                                <p><span className="text-gray-400">Puntaje:</span> 🎯 {lastTodayCompletion.achievedScore}/{lastTodayCompletion.plannedScore}</p>
+                                                <p><span className="text-gray-400">Puntos del participante:</span> {lastTodayCompletion.participantPoints}</p>
+                                                {lastTodayCompletion.completedAt && (
+                                                    <p><span className="text-gray-400">Completado:</span> {new Date(lastTodayCompletion.completedAt).toLocaleDateString(LOCALE, {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    })}</p>
+                                                )}
+                                            </div>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                ) : (
+                                    <div className="border-t border-gray-100 pt-2 mt-1">
+                                        <p className="text-[10px] text-gray-400 italic">
+                                            Sin completaciones hoy
+                                        </p>
+                                    </div>
+                                )}
+                            </TooltipProvider>
                         </CardContent>
                     </Card>
                     <Card className="bg-white rounded-md">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                             <CardTitle className="text-sm font-medium">
                                 Retos activos
                             </CardTitle>
@@ -419,9 +708,40 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             <div className="text-2xl font-bold">
                                 {totalActiveRetos}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Retos disponibles
+                            <p className="text-xs text-muted-foreground mb-2">
+                                Retos grupales disponibles
                             </p>
+                            {lastReto ? (
+                                <div className="border-t border-gray-100 pt-2 mt-1">
+                                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Último reto
+                                    </p>
+                                    <div className="flex items-start gap-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold truncate text-gray-800">
+                                                {lastReto.title || 'Sin título'}
+                                            </p>
+                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+                                                {lastReto.difficulty && (
+                                                    <span>{'⭐'.repeat(lastReto.difficulty)}</span>
+                                                )}
+                                                {lastReto.scheduleDate && (
+                                                    <>
+                                                        {lastReto.difficulty && <span>·</span>}
+                                                        <span>📅 {new Date(lastReto.scheduleDate).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short' })}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="border-t border-gray-100 pt-2 mt-1">
+                                    <p className="text-[10px] text-gray-400 italic">
+                                        Sin retos aún
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -503,9 +823,12 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                             {/*<DataGeneral />*/}
                         </TabsList>
                         <TabsContent value="overview" className="space-y-4">
+                            {showCardsSkeleton ? (
+                                <StatCardSkeleton count={5} className="grid-cols-2 md:grid-cols-2 lg:grid-cols-5" />
+                            ) : (
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                                 <Card className="bg-white rounded-md">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                         <CardTitle className="text-md font-normal">
                                             Total actividades
                                         </CardTitle>
@@ -540,16 +863,71 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         </div>
                                     )}
                                     <CardContent>
-                                        <div className="text-2xl font-bold">
+                                        <div className="text-xl font-bold">
                                             {totalActivities ?? 0}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground mb-3">
                                             Actividades creadas en el sistema
                                         </p>
+                                        <TooltipProvider>
+                                            {lastActivity ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="border-t border-gray-100 pt-3 mt-1 cursor-help">
+                                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                                Última creada
+                                                            </p>
+                                                            <div className="flex items-center gap-2.5">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-semibold truncate text-gray-800">
+                                                                        {lastActivity.title || 'Sin título'}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                                        <span className="capitalize">{lastActivity.type?.replace('_', ' ') || 'actividad'}</span>
+                                                                        {lastActivity.difficulty && (
+                                                                            <span>{'⭐'.repeat(lastActivity.difficulty)}</span>
+                                                                        )}
+                                                                        {lastActivity.emotionName && (
+                                                                            <>
+                                                                                <span>·</span>
+                                                                                <span>{lastActivity.emotionName}</span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" align="start" className="w-64 p-4 bg-white shadow-xl border rounded-lg">
+                                                        <div className="space-y-2 text-xs">
+                                                            <p className="font-semibold text-gray-800 text-sm">{lastActivity.title}</p>
+                                                            <div className="border-t border-gray-100" />
+                                                            <p><span className="text-gray-400">Tipo:</span> <span className="capitalize">{lastActivity.type?.replace('_', ' ')}</span></p>
+                                                            {lastActivity.difficulty && (
+                                                                <p><span className="text-gray-400">Dificultad:</span> {'⭐'.repeat(lastActivity.difficulty)} ({lastActivity.difficulty}/5)</p>
+                                                            )}
+                                                            {lastActivity.emotionName && (
+                                                                <p><span className="text-gray-400">Emoción:</span> {lastActivity.emotionName}</p>
+                                                            )}
+                                                            {lastActivity.scheduleDate && (
+                                                                <p><span className="text-gray-400">Fecha programada:</span> {new Date(lastActivity.scheduleDate).toLocaleDateString(LOCALE, { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                            )}
+                                                            <p><span className="text-gray-400">Creada:</span> {new Date(lastActivity.createdAt).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <div className="border-t border-gray-100 pt-3 mt-1">
+                                                    <p className="text-[11px] text-gray-400 italic">
+                                                        Sin actividades aún
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </TooltipProvider>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                         <CardTitle className="text-md font-normal">
                                             Total participantes
                                         </CardTitle>
@@ -559,13 +937,204 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         <div className="text-xl font-bold">
                                             {totalParticipants ?? 0}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground mb-3">
                                             Participantes registrados
                                         </p>
+                                        {lastParticipant ? (
+                                            <div className="border-t border-gray-100 pt-3 mt-1">
+                                                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                    Último en participar
+                                                </p>
+                                                <div className="flex items-center gap-2.5">
+                                                    <HoverCard>
+                                                        <HoverCardTrigger asChild>
+                                                            <div
+                                                                className="cursor-pointer"
+                                                                onClick={() => {
+                                                                    openTab(
+                                                                        `/Participante/${lastParticipant.participantId}`,
+                                                                        lastParticipant.nickname || 'Participante',
+                                                                        <ParticipantProfile
+                                                                            participantId={lastParticipant.participantId}
+                                                                            nickname={lastParticipant.nickname}
+                                                                            avatar={lastParticipant.avatar}
+                                                                            level={lastParticipant.level}
+                                                                            points={lastParticipant.points}
+                                                                            currentStreak={lastParticipant.currentStreak}
+                                                                            maxStreak={lastParticipant.maxStreak}
+                                                                            totalActivitiesCompleted={lastParticipant.totalActivitiesCompleted}
+                                                                            course={lastParticipant.course}
+                                                                            lastParticipation={lastParticipant.lastParticipation}
+                                                                        />
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <SafeAvatar
+                                                                    avatar={lastParticipant.avatar}
+                                                                    name={lastParticipant.nickname || 'Participante'}
+                                                                    className="w-8 h-8"
+                                                                    gradient="from-blue-400 to-purple-500"
+                                                                    ringHover="hover:ring-blue-300"
+                                                                />
+                                                            </div>
+                                                        </HoverCardTrigger>
+                                                        <HoverCardContent
+                                                            side="bottom"
+                                                            align="start"
+                                                            className="w-64 p-4 bg-white shadow-xl border rounded-lg"
+                                                        >
+                                                            <div className="space-y-3">
+                                                                {/* Cabecera con avatar grande y nickname */}
+                                                                <div className="flex items-center gap-3">
+                                                                    <SafeAvatar
+                                                                        avatar={lastParticipant.avatar}
+                                                                        name={lastParticipant.nickname || 'Participante'}
+                                                                        className="w-10 h-10"
+                                                                        gradient="from-blue-400 to-purple-500"
+                                                                    />
+                                                                    <div>
+                                                                        <p className="text-sm font-semibold text-gray-800">
+                                                                            {lastParticipant.nickname || 'Participante'}
+                                                                        </p>
+                                                                        {lastParticipant.course?.name && (
+                                                                            <p className="text-[11px] text-muted-foreground">
+                                                                                {lastParticipant.course.name}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Barra separadora */}
+                                                                <div className="border-t border-gray-100" />
+
+                                                                {/* Grid de estadísticas */}
+                                                                <div className="grid grid-cols-2 gap-y-2 gap-x-3 text-xs">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-yellow-500 text-sm">⭐</span>
+                                                                        <div>
+                                                                            <p className="text-gray-400 text-[10px]">Nivel</p>
+                                                                            <p className="font-semibold text-gray-700 uppercase">
+                                                                                {lastParticipant.level || 'bronce'}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-blue-500 text-sm">📊</span>
+                                                                        <div>
+                                                                            <p className="text-gray-400 text-[10px]">Puntos</p>
+                                                                            <p className="font-semibold text-gray-700">
+                                                                                {lastParticipant.points ?? 0}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-green-500 text-sm">🏆</span>
+                                                                        <div>
+                                                                            <p className="text-gray-400 text-[10px]">Completadas</p>
+                                                                            <p className="font-semibold text-gray-700">
+                                                                                {lastParticipant.totalActivitiesCompleted ?? 0}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-orange-500 text-sm">🔥</span>
+                                                                        <div>
+                                                                            <p className="text-gray-400 text-[10px]">Racha</p>
+                                                                            <p className="font-semibold text-gray-700">
+                                                                                {lastParticipant.currentStreak ?? 0}
+                                                                                {lastParticipant.maxStreak > 0 && (
+                                                                                    <span className="text-gray-400 font-normal">
+                                                                                        {' '}/ máx {lastParticipant.maxStreak}
+                                                                                    </span>
+                                                                                )}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Última actividad */}
+                                                                {lastParticipant.lastParticipation && (
+                                                                    <>
+                                                                        <div className="border-t border-gray-100" />
+                                                                        <div className="text-xs">
+                                                                            <p className="text-gray-400 text-[10px] mb-0.5">Última actividad</p>
+                                                                            <p className="font-medium text-gray-700 truncate">
+                                                                                {lastParticipant.lastParticipation.activityTitle || 'Actividad completada'}
+                                                                            </p>
+                                                                            <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                                                                                <span>
+                                                                                    🎯 {lastParticipant.lastParticipation.achievedScore}/{lastParticipant.lastParticipation.plannedScore}
+                                                                                </span>
+                                                                                {lastParticipant.lastParticipation.completedAt && (
+                                                                                    <>
+                                                                                        <span>·</span>
+                                                                                        <span>
+                                                                                            {new Date(lastParticipant.lastParticipation.completedAt).toLocaleDateString(LOCALE, {
+                                                                                                day: '2-digit',
+                                                                                                month: 'short',
+                                                                                                hour: '2-digit',
+                                                                                                minute: '2-digit',
+                                                                                            })}
+                                                                                        </span>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </HoverCardContent>
+                                                    </HoverCard>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold truncate text-gray-800">
+                                                            {lastParticipant.nickname || 'Participante'}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                            {lastParticipant.level && (
+                                                                <span className="uppercase font-medium text-[10px] px-1.5 py-0.5 rounded bg-gray-100">
+                                                                    {lastParticipant.level}
+                                                                </span>
+                                                            )}
+                                                            <span>{lastParticipant.points ?? 0} pts</span>
+                                                            {lastParticipant.course?.name && (
+                                                                <span className="truncate">· {lastParticipant.course.name}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {lastParticipant.lastParticipation && (
+                                                    <div className="mt-2 text-[11px] text-gray-400 flex items-center gap-1">
+                                                        <span>📍</span>
+                                                        <span className="truncate">
+                                                            {lastParticipant.lastParticipation.activityTitle || 'Actividad'}
+                                                        </span>
+                                                        {lastParticipant.lastParticipation.completedAt && (
+                                                            <>
+                                                                <span>·</span>
+                                                                <span className="whitespace-nowrap">
+                                                                    {new Date(lastParticipant.lastParticipation.completedAt).toLocaleDateString(LOCALE, {
+                                                                        day: '2-digit',
+                                                                        month: 'short',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                    })}
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="border-t border-gray-100 pt-3 mt-1">
+                                                <p className="text-[11px] text-gray-400 italic">
+                                                    Sin participaciones aún
+                                                </p>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                         <CardTitle className="text-md font-normal">
                                             Total de usuarios
                                         </CardTitle>
@@ -581,13 +1150,113 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         <div className="text-xl font-bold">
                                             {totalUsers ?? 0}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground mb-3">
                                             Usuarios del sistema
                                         </p>
+                                        <TooltipProvider>
+                                            {lastRegisteredUser ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="border-t border-gray-100 pt-3 mt-1 cursor-help">
+                                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                                Último registro
+                                                            </p>
+                                                            <div className="flex items-center gap-2.5">
+                                                                <SafeAvatar
+                                                                    avatar={lastRegisteredUser.avatar}
+                                                                    name={lastRegisteredUser.name || lastRegisteredUser.username || 'Usuario'}
+                                                                    className="w-8 h-8"
+                                                                    gradient="from-emerald-400 to-teal-500"
+                                                                    ringHover="hover:ring-emerald-300"
+                                                                />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-semibold truncate text-gray-800">
+                                                                        {lastRegisteredUser.name || lastRegisteredUser.username || 'Usuario'}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                                        <span>{lastRegisteredUser.role?.name || 'Sin rol'}</span>
+                                                                        {lastRegisteredUser.company?.name && (
+                                                                            <>
+                                                                                <span>·</span>
+                                                                                <span className="truncate">{lastRegisteredUser.company.name}</span>
+                                                                            </>
+                                                                        )}
+                                                                        {lastRegisteredUser.createdAt && (
+                                                                            <>
+                                                                                <span>·</span>
+                                                                                <span className="whitespace-nowrap">
+                                                                                    {new Date(lastRegisteredUser.createdAt).toLocaleDateString(LOCALE, {
+                                                                                        day: '2-digit',
+                                                                                        month: 'short',
+                                                                                    })}
+                                                                                </span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" align="start" className="w-64 p-4 bg-white shadow-xl border rounded-lg">
+                                                        <div className="space-y-2 text-xs">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <SafeAvatar
+                                                                    avatar={lastRegisteredUser.avatar}
+                                                                    name={lastRegisteredUser.name || lastRegisteredUser.username || 'Usuario'}
+                                                                    className="w-10 h-10"
+                                                                    gradient="from-emerald-400 to-teal-500"
+                                                                />
+                                                                <div>
+                                                                    <p className="font-semibold text-gray-800 text-sm">
+                                                                        {lastRegisteredUser.name || lastRegisteredUser.username}
+                                                                    </p>
+                                                                    {lastRegisteredUser.role?.name && (
+                                                                        <p className="text-gray-500">{lastRegisteredUser.role.name}</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="border-t border-gray-100" />
+                                                            <div className="grid grid-cols-1 gap-1.5 text-gray-600">
+                                                                {lastRegisteredUser.username && (
+                                                                    <p><span className="text-gray-400">Usuario:</span> @{lastRegisteredUser.username}</p>
+                                                                )}
+                                                                {lastRegisteredUser.email && (
+                                                                    <p><span className="text-gray-400">Email:</span> {lastRegisteredUser.email}</p>
+                                                                )}
+                                                                {lastRegisteredUser.documentNumber && (
+                                                                    <p><span className="text-gray-400">Documento:</span> {lastRegisteredUser.documentNumber}</p>
+                                                                )}
+                                                                {lastRegisteredUser.phoneNumber && (
+                                                                    <p><span className="text-gray-400">Teléfono:</span> {lastRegisteredUser.phoneNumber}</p>
+                                                                )}
+                                                                {lastRegisteredUser.company?.name && (
+                                                                    <p><span className="text-gray-400">Empresa:</span> {lastRegisteredUser.company.name}</p>
+                                                                )}
+                                                                {lastRegisteredUser.createdAt && (
+                                                                    <p><span className="text-gray-400">Registro:</span> {new Date(lastRegisteredUser.createdAt).toLocaleDateString(LOCALE, {
+                                                                        day: '2-digit',
+                                                                        month: 'long',
+                                                                        year: 'numeric',
+                                                                        hour: '2-digit',
+                                                                        minute: '2-digit',
+                                                                    })}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <div className="border-t border-gray-100 pt-3 mt-1">
+                                                    <p className="text-[11px] text-gray-400 italic">
+                                                        Sin usuarios registrados
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </TooltipProvider>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                         <CardTitle className="text-md font-normal">
                                             Completaciones hoy
                                         </CardTitle>
@@ -597,13 +1266,84 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         <div className="text-xl font-bold">
                                             {totalCompletionsToday}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground mb-3">
                                             Actividades completadas hoy
                                         </p>
+                                        <TooltipProvider>
+                                            {lastTodayCompletion ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="border-t border-gray-100 pt-3 mt-1 cursor-help">
+                                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                                Último en completar
+                                                            </p>
+                                                            <div className="flex items-center gap-2.5">
+                                                                 {lastTodayCompletion.participantAvatar && (
+                                                                     <SafeAvatar
+                                                                         avatar={lastTodayCompletion.participantAvatar}
+                                                                         name={lastTodayCompletion.participantNickname || 'Participante'}
+                                                                         className="w-8 h-8"
+                                                                         gradient="from-orange-400 to-pink-500"
+                                                                         ringHover="hover:ring-orange-300"
+                                                                     />
+                                                                 )}
+                                                                 <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-semibold truncate text-gray-800">
+                                                                        {lastTodayCompletion.participantNickname || 'Participante'}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                                        <span className="uppercase font-medium text-[10px] px-1.5 py-0.5 rounded bg-gray-100">
+                                                                            {lastTodayCompletion.participantLevel}
+                                                                        </span>
+                                                                        <span>🎯 {lastTodayCompletion.achievedScore}/{lastTodayCompletion.plannedScore}</span>
+                                                                        <span>·</span>
+                                                                        <span className="truncate">{lastTodayCompletion.activityTitle}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" align="start" className="w-64 p-4 bg-white shadow-xl border rounded-lg">
+                                                        <div className="space-y-2 text-xs">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <SafeAvatar
+                                                                    avatar={lastTodayCompletion.participantAvatar}
+                                                                    name={lastTodayCompletion.participantNickname || 'Participante'}
+                                                                    className="w-10 h-10"
+                                                                    gradient="from-orange-400 to-pink-500"
+                                                                />
+                                                                <div>
+                                                                    <p className="font-semibold text-gray-800 text-sm">{lastTodayCompletion.participantNickname}</p>
+                                                                    <p className="text-gray-500 uppercase text-[10px]">{lastTodayCompletion.participantLevel}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="border-t border-gray-100" />
+                                                            <p><span className="text-gray-400">Actividad:</span> {lastTodayCompletion.activityTitle}</p>
+                                                            <p><span className="text-gray-400">Puntaje:</span> 🎯 {lastTodayCompletion.achievedScore}/{lastTodayCompletion.plannedScore}</p>
+                                                            <p><span className="text-gray-400">Puntos del participante:</span> {lastTodayCompletion.participantPoints}</p>
+                                                            {lastTodayCompletion.completedAt && (
+                                                                <p><span className="text-gray-400">Completado:</span> {new Date(lastTodayCompletion.completedAt).toLocaleDateString(LOCALE, {
+                                                                    day: '2-digit',
+                                                                    month: 'short',
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit',
+                                                                })}</p>
+                                                            )}
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <div className="border-t border-gray-100 pt-3 mt-1">
+                                                    <p className="text-[11px] text-gray-400 italic">
+                                                        Sin completaciones hoy
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </TooltipProvider>
                                     </CardContent>
                                 </Card>
                                 <Card className="bg-white rounded-md">
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                         <CardTitle className="text-md font-normal">
                                             Retos activos
                                         </CardTitle>
@@ -624,13 +1364,88 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         <div className="text-xl font-bold">
                                             {totalActiveRetos}
                                         </div>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-muted-foreground mb-3">
                                             Retos grupales disponibles
                                         </p>
+                                        <TooltipProvider>
+                                            {lastReto ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="border-t border-gray-100 pt-3 mt-1 cursor-help">
+                                                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                                                                Último reto
+                                                            </p>
+                                                            <div className="flex items-center gap-2.5">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-semibold truncate text-gray-800">
+                                                                        {lastReto.title || 'Sin título'}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                                                        {lastReto.difficulty && (
+                                                                            <span>{'⭐'.repeat(lastReto.difficulty)}</span>
+                                                                        )}
+                                                                        {lastReto.scheduleDate && (
+                                                                            <>
+                                                                                {lastReto.difficulty && <span>·</span>}
+                                                                                <span>📅 {new Date(lastReto.scheduleDate).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short' })}</span>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="bottom" align="start" className="w-64 p-4 bg-white shadow-xl border rounded-lg">
+                                                        <div className="space-y-2 text-xs">
+                                                            <p className="font-semibold text-gray-800 text-sm">{lastReto.title}</p>
+                                                            <div className="border-t border-gray-100" />
+                                                            {lastReto.difficulty && (
+                                                                <p><span className="text-gray-400">Dificultad:</span> {'⭐'.repeat(lastReto.difficulty)} ({lastReto.difficulty}/5)</p>
+                                                            )}
+                                                            {lastReto.scheduleDate && (
+                                                                <p><span className="text-gray-400">Fecha programada:</span> {new Date(lastReto.scheduleDate).toLocaleDateString(LOCALE, { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                            )}
+                                                            <p><span className="text-gray-400">Creado:</span> {new Date(lastReto.createdAt).toLocaleDateString(LOCALE, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                        </div>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : (
+                                                <div className="border-t border-gray-100 pt-3 mt-1">
+                                                    <p className="text-[11px] text-gray-400 italic">
+                                                        Sin retos aún
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </TooltipProvider>
                                     </CardContent>
                                 </Card>
                             </div>
+                            )}
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+                                {showChartsSkeleton ? (
+                                    <Card className="col-span-4 bg-white rounded-md">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle>
+                                                <div className="flex items-center justify-between">
+                                                    <p>Información general</p>
+                                                </div>
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Actividades creadas y sus participaciones por mes en {selectedYear}
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ChartSkeleton />
+                                            <div className="mt-4">
+                                                <h4 className="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+                                                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+                                                    Top participantes
+                                                </h4>
+                                                <ListSkeleton rows={5} />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
                                 <Card className="col-span-4 bg-white rounded-md">
                                     <CardHeader className="pb-2">
                                         <CardTitle>
@@ -688,13 +1503,13 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                                     {topParticipants.map((p: any) => (
                                                         <li key={p.rank} className="flex items-center gap-2 border-b border-gray-100 pb-2 last:border-0">
                                                             <span className="text-xs font-bold text-gray-400 w-4 text-right flex-shrink-0">{p.rank}</span>
-                                                            {p.avatar ? (
-                                                                <img src={p.avatar} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
-                                                            ) : (
-                                                                <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-500 flex-shrink-0">
-                                                                    {p.nickname?.charAt(0)?.toUpperCase() || '?'}
-                                                                </div>
-                                                            )}
+                                                            <SafeAvatar
+                                                                avatar={p.avatar}
+                                                                name={p.nickname || 'Participante'}
+                                                                className="w-5 h-5"
+                                                                gradient="from-gray-300 to-gray-400"
+                                                                ringHover=""
+                                                            />
                                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                                 <span className="text-sm font-medium truncate">{p.nickname || 'Participante'}</span>
                                                                 {p.course && (
@@ -716,6 +1531,20 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         </div>
                                     </CardContent>
                                 </Card>
+                                )}
+                                {showNotifSkeleton ? (
+                                    <Card className="col-span-3 bg-white rounded-md">
+                                        <CardHeader className="pb-3">
+                                            <CardTitle>Acciones recientes</CardTitle>
+                                            <CardDescription className="text-sm">
+                                                Últimas notificaciones del sistema
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ListSkeleton rows={5} avatar={false} subtitle />
+                                        </CardContent>
+                                    </Card>
+                                ) : (
                                 <Card className="col-span-3 bg-white rounded-md">
                                     <CardHeader className="pb-3">
                                         <CardTitle>Acciones recientes</CardTitle>
@@ -752,6 +1581,7 @@ const GeneralDashboardComponent: React.FC<Props> = ({ setTab }) => {
                                         )}
                                     </CardContent>
                                 </Card>
+                                )}
                             </div>
                         </TabsContent>
                         <TabsContent value="analytics" className="space-y-4 w-full">

@@ -1,6 +1,4 @@
-import Image from 'next/image';
 import React from 'react';
-import whatsappIcon from '../../../public/whatsapp.svg';
 
 interface WhatsAppChatProps<T> {
     isIcon: boolean;
@@ -25,8 +23,8 @@ const WhatsAppChat: React.FC<WhatsAppChatProps<any>> = ({ isIcon }) => {
                 rel="noopener noreferrer"
                 className="flex items-center justify-center px-4 py-3 rounded-md bg-green-500 text-white hover:bg-green-600 mt-3 focus:outline-none focus-shadow-outline"
             >
-                <Image
-                    src={whatsappIcon}
+                <img
+                    src="/whatsapp.svg"
                     alt="Icono de WhatsApp"
                     className="w-6 h-6 mr-2"
                 />

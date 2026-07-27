@@ -14,7 +14,7 @@ interface ReportScoresProps {
     filters: ReportsFilters;
 }
 
-const rangeColors: Record<string, string> = [
+const rangeColors: string[] = [
     'bg-red-400',
     'bg-orange-400',
     'bg-yellow-400',

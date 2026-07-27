@@ -175,7 +175,7 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
         try {
             const emptyToUndef = (v: string) => v || undefined;
             const payload: Record<string, any> = {
-                _id: userID,
+                ...(isEditing ? { _id: userID } : {}),
                 name: data.name,
                 documentType: emptyToUndef(data.documentType),
                 documentNumber: data.documentNumber || undefined,
@@ -296,7 +296,7 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
                         <DropdownMenuButton
                             label={labelSelectedRole}
                             options={optionsRole}

@@ -71,6 +71,23 @@ export default function MyApp({ Component, pageProps }: AppPropsWithLayout) {
     return () => router.events?.off('routeChangeError', handleRouteError);
   }, [router]);
 
+  // Suprimir warning de Recharts (defaultProps obsoleto) — solo en desarrollo, inofensivo
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args: any[]) => {
+      const msg = typeof args[0] === 'string' ? args[0] : '';
+      if (
+        msg.includes('Support for defaultProps will be removed from function components')
+      ) {
+        return; // Warning conocido de Recharts + React 18, inofensivo
+      }
+      originalError.call(console, ...args);
+    };
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
+
   // Use the layout defined at the page level, if available
   const getLayout = Component.getLayout ?? ((page) => page)
 

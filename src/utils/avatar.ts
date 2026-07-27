@@ -21,5 +21,7 @@ export function getAvatarUrl(avatar: string | undefined | null): string {
   if (isFileId) {
     return `${API_BASE}/api/users/avatar/stream/${avatar}`;
   }
-  return `${API_BASE}/avatars/${avatar}`;
+  // Normalizar extensión: la BD guarda "06.png" pero los archivos son "06.jpg"
+  const normalized = avatar.replace(/\.png$/i, '.jpg');
+  return `${API_BASE}/avatars/${normalized}`;
 }

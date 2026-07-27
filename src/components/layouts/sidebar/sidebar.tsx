@@ -56,10 +56,24 @@ const Sidebar = () => {
         };
     }, []);
 
+    /**
+     * Verifica si el usuario tiene acceso a un sidebarSerial.
+     * Soporta string (un serial) o string[] (OR lógico — cualquiera basta).
+     */
+    const hasSerialAccess = (sidebarSerial: string | string[] | undefined): boolean => {
+        if (!sidebarSerial) return true;
+        const serials = Array.isArray(sidebarSerial) ? sidebarSerial : [sidebarSerial];
+        return serials.some((s) => resolvedPermissions?.serials.includes(s));
+    };
+
     useEffect(() => {
-        // Si no hay permisos resueltos aún, mostrar todos los items
+        // Si no hay permisos resueltos aún, mostrar solo items
+        // públicos (sin sidebarSerial) como "Inicio".
+        // NO mostrar todos los items porque filtraría contenido
+        // admin a usuarios con permisos no cargados aún.
         if (!resolvedPermissions) {
-            setDataMainMenu(items);
+            const safeItems = items.filter((item) => !item.sidebarSerial);
+            setDataMainMenu(safeItems);
             return;
         }
 
@@ -69,21 +83,28 @@ const Sidebar = () => {
             return;
         }
 
-        // Filtrar items del menú según los sidebarSerial (PERM-XXXX) de permisos
-        const filteredItems = items.filter(item => {
+        // Filtrar items del menú según los sidebarSerial de permisos
+        const filteredItems = items.filter((item) => {
+            // Si el item tiene excludeRoles y el rol actual está en la lista, ocultarlo
+            // Permite bloquear items por rol aunque el usuario tenga el serial del permiso.
+            const roleName = resolvedPermissions?.role?.name;
+            if (item.excludeRoles && roleName && item.excludeRoles.includes(roleName)) {
+                return false;
+            }
+
             // Si el item no requiere permiso, mostrarlo
             if (!item.sidebarSerial) return true;
 
             // Si tiene hijos, verificar que al menos uno tenga acceso
             if (item.children && item.children.length > 0) {
                 const hasChildWithAccess = item.children.some(
-                    (child: any) => !child.sidebarSerial || resolvedPermissions.serials.includes(child.sidebarSerial)
+                    (child: any) => hasSerialAccess(child.sidebarSerial),
                 );
                 if (!hasChildWithAccess) return false;
             }
 
-            // Verificar permiso por sidebarSerial
-            return resolvedPermissions.serials.includes(item.sidebarSerial);
+            // Verificar permiso por sidebarSerial (string o string[])
+            return hasSerialAccess(item.sidebarSerial);
         });
 
         setDataMainMenu(filteredItems);

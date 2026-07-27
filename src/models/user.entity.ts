@@ -25,6 +25,7 @@ export interface User extends BaseModel {
     role?: Role;
     company?: Company;
     isLogged: boolean;
+    isActive: boolean;
     avatar?: string;
     sub?: string;
     avatarGallery?: AvatarGalleryItem[];
@@ -44,6 +45,7 @@ export class User implements BaseModel {
     role?: Role;
     company?: Company;
     isLogged: boolean;
+    isActive: boolean;
     avatar?: string;
     sub?: string;
     avatarGallery?: AvatarGalleryItem[];

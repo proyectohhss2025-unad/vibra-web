@@ -60,7 +60,8 @@ const SearchUser: React.FC<SearchProps> = ({ isOpen, onClose, setUser, disabled,
                     createdAt: new Date(),
                     createdBy: '',
                     isLogged: false,
-                    userId: ''
+                    userId: '',
+                    isActive: true,
                 }])
             }
         } else {
@@ -79,7 +80,8 @@ const SearchUser: React.FC<SearchProps> = ({ isOpen, onClose, setUser, disabled,
                     createdAt: new Date(),
                     createdBy: '',
                     isLogged: false,
-                    userId: ''
+                    userId: '',
+                    isActive: true,
                 },
             ]);
         }
