@@ -28,3 +28,6 @@ export type { ActivityFormData } from './activity.schema';
 
 export { UserSchema } from './user.schema';
 export type { UserFormData } from './user.schema';
+
+export { CronJobSchema } from './cron-job.schema';
+export type { CronJobFormData } from './cron-job.schema';

@@ -21,6 +21,7 @@ import TeacherCourseList from '@/components/course/teacher-course-list';
 import MyCoursesList from '@/components/enrollment/my-courses-list';
 import MyParticipations from '@/components/participant/my-participations';
 import MyTestResponses from '@/components/test/my-test-responses';
+import CronJobDataPage from '@/components/cron-job/data-page';
 export const items = [
   {
     _id: '1',
@@ -336,6 +337,17 @@ export const items = [
         icon: 'ShieldExclamationIcon',
         sidebarSerial: 'PERM-0041',
         component: BlockedIpsDataPage,
+        isActive: true,
+      },
+      {
+        _id: '50',
+        name: 'cron-jobs',
+        href: '/cron-job/cron-job-table',
+        label: 'Tareas Programadas',
+        color: '#EAEAEA',
+        description: 'Administración de tareas automáticas (cron jobs) del sistema',
+        icon: 'ClockIcon',
+        component: CronJobDataPage,
         isActive: true,
       },
     ],
