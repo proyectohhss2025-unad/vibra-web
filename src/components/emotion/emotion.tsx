@@ -9,6 +9,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import Loading from '../layouts/loading/loading';
 import FormField from '@/components/forms/FormField';
+import EmojiPicker from './emoji-picker';
 import { useVibraForm } from '@/hooks/useVibraForm';
 import { EmotionSchema, type EmotionFormData } from '@/schemas';
 import '../test/test.css';
@@ -46,6 +47,7 @@ const EmotionComponent: React.FC<EmotionComponentProps> = ({ emotionId }) => {
 
     const watchCategory = watch('category');
     const watchIntensity = watch('intensity');
+    const watchIcono = watch('icono');
 
     useEffect(() => {
         if (!token) router.push('/layout');
@@ -81,8 +83,7 @@ const EmotionComponent: React.FC<EmotionComponentProps> = ({ emotionId }) => {
     const handleFormSubmit = async (data: EmotionFormData) => {
         setIsSubmitting(true);
         try {
-            const exists = await getById(resolvedEmotionId);
-            if (isEditing && exists?._id) {
+            if (isEditing) {
                 await update(emotionID, {
                     name: data.name,
                     description: data.description,
@@ -155,7 +156,18 @@ const EmotionComponent: React.FC<EmotionComponentProps> = ({ emotionId }) => {
                     )} />
                     <FormField label="Descripción" name="description" register={register('description')} error={errors.description} placeholder="Descripción" />
                     <FormField label="Nota de orientación" name="orientationNote" register={register('orientationNote')} error={errors.orientationNote} placeholder="Nota opcional" />
-                    <FormField label="Icono (clase CSS o emoji)" name="icono" register={register('icono')} error={errors.icono} placeholder="Ej: 😊, fas fa-smile" />
+                    <div className="flex flex-col gap-1">
+                        <label htmlFor="icono" className="block text-sm font-medium text-gray-700">Icono (emoji) *</label>
+                        <EmojiPicker
+                            value={watchIcono}
+                            onChange={(emoji) => setValue('icono', emoji)}
+                            disabled={isSubmitting}
+                            inputId="icono"
+                        />
+                        {errors.icono && (
+                            <span className="text-xs text-red-500 mt-0.5">{errors.icono.message}</span>
+                        )}
+                    </div>
                     <FormField label="% Nota (0-100)" name="percentNote" type="number" register={register('percentNote', { valueAsNumber: true })} error={errors.percentNote} />
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Intensidad (1-10)</label>

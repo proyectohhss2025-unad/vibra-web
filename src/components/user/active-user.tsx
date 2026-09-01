@@ -5,15 +5,8 @@ import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import UserListItem from './user-list-item';
-import { config } from '@/config/config';
 
-const environment = process.env.NODE_ENV || 'development';
-
-const configAPI = {
-    baseURL: config[environment].apiDashboard,
-};
-//NOTE: URL del servidor de WebSocket 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || configAPI.baseURL;
+const SOCKET_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 /** Duración del mensaje de notificación en ms */
 const TOAST_DURATION = 5000;

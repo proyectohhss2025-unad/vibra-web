@@ -1,13 +1,6 @@
-import { config } from '@/config/config';
 import { io } from 'socket.io-client';
-const environment = process.env.NODE_ENV || 'development';
 
-const configAPI = {
-    baseURL: config[environment].apiDashboard,
-};
-
-//NOTE: URL del servidor de WebSocket 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || configAPI.baseURL;
+const SOCKET_URL = typeof window !== 'undefined' ? window.location.origin : '';
 const socket = io(SOCKET_URL);
 
 socket.on('connect', () => {

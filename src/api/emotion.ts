@@ -5,6 +5,7 @@
 
 import { config } from '@/config/config';
 import { Emotion } from '@/models/emotion.entity';
+import { fetchWithAuth } from './fetch-with-auth';
 
 const environment = process.env.NODE_ENV || 'development';
 const configAPI = {
@@ -28,15 +29,25 @@ export interface UpdateEmotionPayload extends Partial<CreateEmotionPayload> {
     isActive?: boolean;
 }
 
+export interface EmotionListFilters {
+    isActive?: 'all' | 'active' | 'inactive';
+}
+
 // ─── Funciones API ────────────────────────────────────────────────────
 
 /**
  * Obtiene todas las emociones con paginación
- * GET /api/emotions?page=&limit=
+ * GET /api/emotions?page=&limit=&isActive=
  */
-export const getAll = async (page: number, limit: number): Promise<{ data: Emotion[]; total: number }> => {
+export const getAll = async (
+    page: number,
+    limit: number,
+    filters: EmotionListFilters = {},
+): Promise<{ data: Emotion[]; total: number }> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/emotions?page=${page}&limit=${limit}`);
+        const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+        if (filters.isActive && filters.isActive !== 'all') params.append('isActive', filters.isActive);
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions?${params.toString()}`);
         if (!response.ok) return { data: [], total: 0 };
         return await response.json();
     } catch (error) {
@@ -51,7 +62,7 @@ export const getAll = async (page: number, limit: number): Promise<{ data: Emoti
  */
 export const getById = async (id: string): Promise<Emotion | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/emotions/${id}`);
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions/${id}`);
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
@@ -66,7 +77,7 @@ export const getById = async (id: string): Promise<Emotion | null> => {
  */
 export const create = async (data: CreateEmotionPayload): Promise<Emotion | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/emotions`, {
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -89,7 +100,7 @@ export const create = async (data: CreateEmotionPayload): Promise<Emotion | null
  */
 export const update = async (id: string, data: UpdateEmotionPayload): Promise<Emotion | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/emotions/${id}`, {
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -112,7 +123,7 @@ export const update = async (id: string, data: UpdateEmotionPayload): Promise<Em
  */
 export const toggleActive = async (id: string): Promise<Emotion | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/emotions/${id}`, {
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions/${id}`, {
             method: 'DELETE',
         });
         if (!response.ok) return null;
@@ -129,7 +140,7 @@ export const toggleActive = async (id: string): Promise<Emotion | null> => {
  */
 export const getByName = async (name: string): Promise<Emotion | null> => {
     try {
-        const response = await fetch(`${configAPI.baseURL}/api/emotions/by-name/${encodeURIComponent(name)}`);
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions/by-name/${encodeURIComponent(name)}`);
         if (!response.ok) return null;
         return await response.json();
     } catch (error) {
@@ -156,7 +167,7 @@ export const getEmotionDistribution = async (
         if (courseId) params.append('courseId', courseId);
         const queryStr = params.toString();
         const url = `${configAPI.baseURL}/api/emotions/distribution${queryStr ? `?${queryStr}` : ''}`;
-        const response = await fetch(url);
+        const response = await fetchWithAuth(url);
         if (!response.ok) return [];
         const data = await response.json();
         return Array.isArray(data) ? data : [];
@@ -181,7 +192,7 @@ export const getEmotionEvolution = async (
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
         if (courseId) params.append('courseId', courseId);
-        const response = await fetch(`${configAPI.baseURL}/api/emotions/evolution?${params}`);
+        const response = await fetchWithAuth(`${configAPI.baseURL}/api/emotions/evolution?${params}`);
         if (!response.ok) return [];
         const data = await response.json();
         return Array.isArray(data) ? data : [];

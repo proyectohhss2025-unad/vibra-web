@@ -16,6 +16,7 @@ import { UserPermission } from '@/models/userPermission.entity';
 import { useTabs } from '@/services/contexts/tabs-context';
 import FormPageLayout from '@/components/ui/form-page-layout';
 import FormField from '@/components/forms/FormField';
+import PasswordRequirementList from '@/components/forms/PasswordRequirementList';
 import { useVibraForm } from '@/hooks/useVibraForm';
 import { UserSchema, type UserFormData } from '@/schemas';
 import { Gender } from '@/utils/enum';
@@ -53,8 +54,6 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
     const [success, setSuccess] = useState('');
     const [showModalPermissions, setShowModalPermissions] = useState(false);
     const [userID, setUserID] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { register, handleSubmit, errors, reset, setValue, watch } = useVibraForm(UserSchema, {
@@ -69,6 +68,8 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
         birthDate: '',
         role: '',
         company: '',
+        password: '',
+        confirmPassword: '',
     });
 
     const watchName = watch('name');
@@ -164,13 +165,14 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
     }, [optionsDocumentType, currentDocType]);
 
     const handleFormSubmit = async (data: UserFormData) => {
-        if (!isEditing && password !== confirmPassword) {
-            toast.warning('Las contraseñas no coinciden');
+        // En creación, la contraseña es obligatoria (el backend la exige)
+        if (!isEditing && !data.password) {
+            toast.error('La contraseña es obligatoria');
             return;
         }
         setIsSubmitting(true);
 
-        console.log('[UserForm] Enviando datos...', { userID, name: data.name, username: data.username, role: data.role, company: data.company, gender: data.gender, hasPassword: !!password });
+        console.log('[UserForm] Enviando datos...', { userID, name: data.name, username: data.username, role: data.role, company: data.company, gender: data.gender, hasPassword: !!data.password });
 
         try {
             const emptyToUndef = (v: string) => v || undefined;
@@ -188,7 +190,7 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
                 gender: data.gender,
             };
             if (data.birthDate) payload.birthDate = new Date(data.birthDate).toISOString();
-            if (password) payload.password = password;
+            if (data.password) payload.password = data.password;
 
             console.log('[UserForm] Payload enviado al backend:', payload);
 
@@ -258,6 +260,7 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
     const watchPhone = watch('phoneNumber');
     const watchGender = watch('gender');
     const watchBirthDate = watch('birthDate');
+    const watchPassword = watch('password');
 
     return (
         <FormPageLayout
@@ -335,18 +338,25 @@ const UserComponent: React.FC<UserComponentProps> = ({ userId }) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-4 border-t border-gray-200">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            {isEditing ? 'Nueva contraseña (dejar vacío para mantener)' : 'Contraseña'}
-                        </label>
-                        <input type="password" className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                            value={password} onChange={(e) => setPassword(e.target.value)}
-                            placeholder={isEditing ? '••••••••' : ''} />
+                        <FormField
+                            label={isEditing ? 'Nueva contraseña (dejar vacío para mantener)' : 'Contraseña *'}
+                            name="password"
+                            type="password"
+                            register={register('password')}
+                            error={errors.password}
+                            placeholder={isEditing ? '••••••••' : ''}
+                        />
+                        <PasswordRequirementList password={watchPassword} />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
-                        <input type="password" className="w-full rounded-md border-0 py-2 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm"
-                            value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder={isEditing ? '••••••••' : ''} />
+                        <FormField
+                            label="Confirmar contraseña"
+                            name="confirmPassword"
+                            type="password"
+                            register={register('confirmPassword')}
+                            error={errors.confirmPassword}
+                            placeholder={isEditing ? '••••••••' : ''}
+                        />
                     </div>
                 </div>
             </div>

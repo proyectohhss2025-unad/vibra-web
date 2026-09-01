@@ -15,6 +15,8 @@ import { TextSearchIcon } from "lucide-react"
 import { useRouter } from "next/router"
 import React, { useContext, useEffect, useState } from "react"
 import DynamicTabs from "./general-dashboard/dynamic-tabs"
+import { FullscreenToggle } from "./general-dashboard/fullscreen-toggle"
+import { FontSizeControl } from "./general-dashboard/font-size-control"
 import MainNav from "./general-dashboard/main-nav"
 import { NotificationsItem } from "./general-dashboard/notifications-item"
 import SearchInAllPage from "./general-dashboard/search"
@@ -141,6 +143,8 @@ const HomeDashboardComponent: React.FC = () => {
                                     </div>
                                 )}
                             </SearchInAllPage>
+                            <FullscreenToggle />
+                            <FontSizeControl />
                             <NotificationsItem />
                             <UserNav />
                         </div>

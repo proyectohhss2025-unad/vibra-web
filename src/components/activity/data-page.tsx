@@ -20,7 +20,8 @@ const ActivityDataPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'reto' | 'evento_personal' | 'actividad_pares' | 'otro'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<{
     show: boolean;
     activity: Activity | null;
@@ -29,7 +30,10 @@ const ActivityDataPage: React.FC = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const response = await getAll(currentPage, pageSize);
+      const response = await getAll(currentPage, pageSize, {
+        type: typeFilter,
+        isActive: statusFilter,
+      });
       setData(response.docs || []);
       setTotal(response.totalDocs || 0);
     } catch (error) {
@@ -40,7 +44,7 @@ const ActivityDataPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [currentPage, pageSize, refreshData]);
+  useEffect(() => { loadData(); }, [currentPage, pageSize, refreshData, statusFilter, typeFilter]);
 
   const handleEdit = (activity: Activity) => {
     const id = activity?._id ? String(activity._id) : '';
@@ -76,12 +80,29 @@ const ActivityDataPage: React.FC = () => {
     openTab('/Actividad/new', 'Nueva actividad', <ActivityComponent />);
   };
 
-  const formatDate = (dateStr?: string | Date) => {
+const formatDate = (dateStr?: string | Date) => {
     if (!dateStr) return '-';
     // Extraer fecha del ISO string sin convertir timezone
     const isoStr = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
     const [year, month, day] = isoStr.split('T')[0].split('-');
     return `${day}/${month}/${year}`;
+  };
+
+  const ACTIVITY_TYPE_LABELS: Record<string, { label: string; className: string }> = {
+    reto: { label: 'Reto', className: 'bg-purple-100 text-purple-700' },
+    evento_personal: { label: 'Evento Personal', className: 'bg-green-100 text-green-700' },
+    actividad_pares: { label: 'Actividad en Pares', className: 'bg-amber-100 text-amber-700' },
+    otro: { label: 'Otro', className: 'bg-gray-100 text-gray-700' },
+  };
+
+  const formatType = (type?: string) => {
+    if (!type) return <span className="text-gray-400">-</span>;
+    const cfg = ACTIVITY_TYPE_LABELS[type] ?? ACTIVITY_TYPE_LABELS.otro;
+    return (
+      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cfg.className}`}>
+        {cfg.label}
+      </span>
+    );
   };
 
   /** Verifica si la fecha de programación ya pasó (actividad expirada) */
@@ -98,17 +119,12 @@ const ActivityDataPage: React.FC = () => {
     return schedDate < today;
   };
 
-  const filteredData = statusFilter === 'all'
-    ? data
-    : data.filter(a => statusFilter === 'active' ? a.isActive !== false : a.isActive === false);
-  const filteredTotal = statusFilter === 'all' ? total : filteredData.length;
-
   return (
     <ListPageLayout
       title="Gestión de Actividades"
       subtitle="Gestione sus actividades, asigne emociones y actualice estados."
-      data={filteredData}
-      total={filteredTotal}
+      data={data}
+      total={total}
       currentPage={currentPage}
       pageSize={pageSize}
       isLoading={isLoading}
@@ -121,20 +137,34 @@ const ActivityDataPage: React.FC = () => {
       onSearchData={(results) => setData(results as Activity[])}
       onSearchLoading={setIsLoading}
       filter={
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-[7px] text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
-        >
-          <option value="all">Todos los estados</option>
-          <option value="active">Activos</option>
-          <option value="inactive">Inactivos</option>
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value as any); setCurrentPage(1); }}
+            className="rounded-md border border-gray-300 px-3 py-[7px] text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
+          >
+            <option value="all">Todos los tipos</option>
+            <option value="reto">Retos</option>
+            <option value="evento_personal">Eventos Personales</option>
+            <option value="actividad_pares">Actividad en Pares</option>
+            <option value="otro">Otros</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value as 'all' | 'active' | 'inactive'); setCurrentPage(1); }}
+            className="rounded-md border border-gray-300 px-3 py-[7px] text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
+          >
+            <option value="all">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+          </select>
+        </div>
       }
       emptyMessage="No hay actividades registradas"
       rowClassName={(a) => isExpired(a) && a.isActive !== false ? 'bg-orange-50' : undefined}
       columns={[
         { key: 'title', label: 'Título', render: (a) => a.title, className: 'min-w-[430px]' },
+        { key: 'type', label: 'Tipo', render: (a) => formatType(a.type), className: 'w-36' },
         {
           key: 'difficulty',
           label: 'Dificultad',

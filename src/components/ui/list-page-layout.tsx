@@ -6,6 +6,7 @@ import ModalConfirm from '../layouts/modal/modal-confirm';
 import Search from '../search/search';
 import Pagination from './table/pagination';
 import CurrentDateTime from '../utils/current-datetime';
+import HeaderActionButton from './header-action-button';
 import '../../components/test/test.css';
 
 export interface Column<T> {
@@ -109,7 +110,7 @@ function ListPageLayout<T extends Record<string, any>>({
               <h3 className="text-xl font-semibold">{title}</h3>
               <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
             </div>
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2 ml-3">
               {onSearchData && onSearchLoading && searchEntity && (
                 <Search
                   isOpen={false}
@@ -118,22 +119,15 @@ function ListPageLayout<T extends Record<string, any>>({
                   entity={searchEntity}
                   setIsLoading={onSearchLoading}
                 >
-                  <button
-                    type="button"
-                    onClick={onRefresh}
-                    title="Refrescar datos"
-                    className="flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-[7px] text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-blue-600 hover:border-blue-400 transition-all duration-150 whitespace-nowrap"
-                  >
-                    <RefreshIcon className="h-4 w-4" />
-                  </button>
+                  <HeaderActionButton onClick={onRefresh} title="Refrescar datos" icon={<RefreshIcon />}>
+                    Refrescar
+                  </HeaderActionButton>
                 </Search>
               )}
               {onAdd && (
-                <button onClick={onAdd}
-                  className="flex items-center gap-2 rounded-md bg-blue-600 px-5 py-[7px] text-sm font-semibold text-white shadow-sm hover:bg-blue-500 whitespace-nowrap transition-all duration-150 mt-2">
-                  <PlusCircleIcon className="h-4 w-4 text-white" />
+                <HeaderActionButton onClick={onAdd} className="mt-2" icon={<PlusCircleIcon />}>
                   {addLabel}
-                </button>
+                </HeaderActionButton>
               )}
               {filter}
             </div>

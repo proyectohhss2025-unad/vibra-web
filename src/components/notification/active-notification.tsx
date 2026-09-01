@@ -3,15 +3,8 @@
 import { useTranslation } from 'react-i18next';
 import React, { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { config } from '@/config/config';
 
-const environment = process.env.NODE_ENV || 'development';
-
-const configAPI = {
-    baseURL: config[environment].apiDashboard,
-};
-//NOTE: URL del servidor de WebSocket 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || configAPI.baseURL;
+const SOCKET_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 const ActiveUsers: React.FC<{ isCollapsed: boolean }> = ({ isCollapsed }) => {
     const { t } = useTranslation();

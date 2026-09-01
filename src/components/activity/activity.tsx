@@ -1,6 +1,6 @@
 'use client'
 
-import { createActivity, getActivityById, updateActivity, CreateActivityPayload, checkActivityDate } from '@/api/activity';
+import { createActivity, getActivityById, updateActivity, CreateActivityPayload, checkActivityDate, uploadResourceFile } from '@/api/activity';
 import { getAll as getAllEmotions } from '@/api/emotion';
 import { Activity } from '@/models/activity.entity';
 import { Emotion } from '@/models/emotion.entity';
@@ -8,10 +8,11 @@ import { User } from '@/models/user.entity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/registry/new-york/ui/card';
 import { useTabs } from '@/services/contexts/tabs-context';
 import { getSafeKeyObjectFromStorage } from '@/utils/safe-token-storage';
-import { PlusCircleIcon, TrashIcon } from '@heroicons/react/outline';
+import { PlusCircleIcon, TrashIcon, UploadIcon } from '@heroicons/react/outline';
 import { SaveIcon, XCircleIcon } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import CardSection from '../ui/card-section';
 import DropdownMenuButton from '../layouts/menu/dropdown-menu-button';
 import Loading from '../layouts/loading/loading';
@@ -38,6 +39,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         difficulty: 1,
         isActive: true,
         emotionId: '',
+        type: 'evento_personal',
         scheduleDate: '',
         scheduleWeek: 1,
         scheduleYear: new Date().getFullYear(),
@@ -55,6 +57,14 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         EmotionBox: { label: 'Caja de emociones', color: 'bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200 hover:text-pink-800 hover:border-pink-400' },
         DiceGame: { label: 'Juego de dados', color: 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200 hover:text-purple-800 hover:border-purple-400' },
     };
+
+    // Tipos de actividad (valores del enum del schema de Activity)
+    const ACTIVITY_TYPES: { value: string; label: string }[] = [
+        { value: 'reto', label: 'Reto' },
+        { value: 'evento_personal', label: 'Evento Personal' },
+        { value: 'actividad_pares', label: 'Actividad en Pares' },
+        { value: 'otro', label: 'Otro' },
+    ];
 
     const countByType = (type: string) => (games ?? []).filter(g => g.type === type).length;
 
@@ -95,6 +105,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
     const watchDifficulty = watch('difficulty');
     const watchIsActive = watch('isActive');
     const watchEmotionId = watch('emotionId');
+    const watchType = watch('type');
     const watchScheduleDate = watch('scheduleDate');
     const watchScheduleWeek = watch('scheduleWeek');
     const watchScheduleYear = watch('scheduleYear');
@@ -136,6 +147,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                         difficulty: typeof res.difficulty === 'number' ? res.difficulty : 1,
                         isActive: typeof res.isActive === 'boolean' ? res.isActive : true,
                         emotionId: '',
+                        type: (res.type as any) || 'evento_personal',
                         scheduleDate: res.schedule?.date
                             ? new Date(res.schedule.date).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
                             : '',
@@ -153,7 +165,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                     // Recursos
                     const rawResources = Array.isArray(res.resources) ? res.resources : [];
                     setResources(rawResources.map((r: any) => ({
-                        type: (r.type === 'video' || r.type === 'audio') ? r.type : 'video',
+                        type: (r.type === 'video' || r.type === 'audio' || r.type === 'image') ? r.type : 'video',
                         url: typeof r.url === 'string' ? r.url : '',
                         duration: typeof r.duration === 'number' ? r.duration : 0,
                         metadata: r.metadata ?? { author: '', language: '' },
@@ -281,6 +293,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                 difficulty: data.difficulty,
                 isActive: data.isActive,
                 emotion: data.emotionId,
+                type: data.type,
                 resources: cleanResources,
                 questions: cleanQuestions,
                 tips: (tips ?? []).filter(t => t.message.trim() !== ''),
@@ -320,7 +333,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         setSuccess('');
         reset({
             title: '', description: '', difficulty: 1, isActive: true,
-            emotionId: '', scheduleDate: '', scheduleWeek: 1, scheduleYear: new Date().getFullYear(),
+            emotionId: '', type: 'evento_personal', scheduleDate: '', scheduleWeek: 1, scheduleYear: new Date().getFullYear(),
         });
         setLabelSelectedEmotion('Seleccionar emoción');
         setResources([]); setQuestions([]);
@@ -334,6 +347,45 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
         const updated = [...(resources ?? [])];
         updated[i] = { ...updated[i], [field]: value };
         setResources(updated);
+    };
+
+    // ── Subida de archivo de recurso ─────────────────────────────────
+    const [uploadingResource, setUploadingResource] = useState<number | null>(null);
+
+    const getResourceAccept = (type: string) => {
+        switch (type) {
+            case 'image': return 'image/jpeg,image/png,image/gif,image/webp';
+            case 'video': return 'video/*';
+            case 'audio': return 'audio/*';
+            default: return '*/*';
+        }
+    };
+
+    const getResourceUploadLabel = (type: string) => {
+        switch (type) {
+            case 'image': return 'imagen';
+            case 'video': return 'video';
+            case 'audio': return 'audio';
+            default: return 'archivo';
+        }
+    };
+
+    const handleResourceFileUpload = async (i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploadingResource(i);
+        try {
+            const url = await uploadResourceFile(file);
+            if (url) {
+                updateResource(i, 'url', url);
+                toast.success('Archivo subido correctamente');
+            } else {
+                toast.error('No se pudo subir el archivo. Verifica el formato (imágenes, video o audio, máx 5MB).');
+            }
+        } finally {
+            setUploadingResource(null);
+            e.target.value = ''; // permite re-seleccionar el mismo archivo
+        }
     };
 
     // ── Preguntas ─────────────────────────────────────────────────────
@@ -474,6 +526,20 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                                     </button>
                                                 </div>
                                             </div>
+
+                                            {/* Tipo de actividad */}
+                                            <div className="w-44">
+                                                <label htmlFor="type" className="block text-sm font-medium leading-6 text-gray-900">Tipo de actividad</label>
+                                                <div className="mt-1">
+                                                    <select id="type" value={watchType}
+                                                        onChange={e => setValue('type', e.target.value as any)}
+                                                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                                                        {ACTIVITY_TYPES.map(t => (
+                                                            <option key={t.value} value={t.value}>{t.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         {/* Descripción */}
@@ -524,7 +590,7 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                 </CardSection>
 
                                 {/* ── Recursos ── */}
-                                <CardSection title="Recursos Multimedia" subtitle="Agregue videos o audios de apoyo">
+                                <CardSection title="Recursos Multimedia" subtitle="Agregue videos, audios o imágenes de apoyo">
                                     <div className="flex items-center justify-between mb-3">
                                         <p className="text-sm font-medium text-gray-600">Recursos ({resources?.length ?? 0})</p>
                                         <button type="button" onClick={addResource}
@@ -533,36 +599,76 @@ const ActivityComponent: React.FC<ActivityComponentProps> = ({ activityId }) => 
                                         </button>
                                     </div>
                                     {(resources ?? []).map((res, i) => (
-                                        <div key={i} className="mb-3 p-3 bg-gray-50 rounded-md border grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-12">
-                                            <div className="sm:col-span-1">
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
-                                                <select value={res.type} onChange={e => updateResource(i, 'type', e.target.value)}
-                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm">
-                                                    <option value="video">Video</option>
-                                                    <option value="audio">Audio</option>
-                                                </select>
+                                        <div key={i} className="mb-3 p-3 bg-gray-50 rounded-md border">
+                                            <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-12">
+                                                <div className="sm:col-span-1">
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">Tipo</label>
+                                                    <select value={res.type} onChange={e => updateResource(i, 'type', e.target.value)}
+                                                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm">
+                                                        <option value="video">Video</option>
+                                                        <option value="audio">Audio</option>
+                                                        <option value="image">Imagen</option>
+                                                    </select>
+                                                </div>
+                                                <div className={res.type === 'image' ? 'sm:col-span-8' : 'sm:col-span-6'}>
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
+                                                    <input type="text" value={res.url} onChange={e => updateResource(i, 'url', e.target.value)}
+                                                        placeholder="https://..."
+                                                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 truncate focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                                                </div>
+                                                {res.type !== 'image' && (
+                                                    <div className="sm:col-span-2">
+                                                        <label className="block text-xs font-medium text-gray-700 mb-1">Duración (s)</label>
+                                                        <input type="number" value={res.duration ?? 0} onChange={e => updateResource(i, 'duration', Number(e.target.value))}
+                                                            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                                                    </div>
+                                                )}
+                                                <div className="sm:col-span-2">
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">Autor</label>
+                                                    <input type="text" value={res.metadata?.author ?? ''} onChange={e => updateResource(i, 'metadata', { ...res.metadata, author: e.target.value })}
+                                                        className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
+                                                </div>
+                                                <div className="sm:col-span-1 flex items-end justify-end">
+                                                    <button type="button" onClick={() => removeResource(i)}
+                                                        className="text-red-500 hover:text-red-700">
+                                                        <TrashIcon className="h-5 w-5" />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div className="sm:col-span-6">
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">URL</label>
-                                                <input type="text" value={res.url} onChange={e => updateResource(i, 'url', e.target.value)}
-                                                    placeholder="https://..."
-                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 truncate focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                                            </div>
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Duración (s)</label>
-                                                <input type="number" value={res.duration ?? 0} onChange={e => updateResource(i, 'duration', Number(e.target.value))}
-                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                                            </div>
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Autor</label>
-                                                <input type="text" value={res.metadata?.author ?? ''} onChange={e => updateResource(i, 'metadata', { ...res.metadata, author: e.target.value })}
-                                                    className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm" />
-                                            </div>
-                                            <div className="sm:col-span-1 flex items-end justify-end">
-                                                <button type="button" onClick={() => removeResource(i)}
-                                                    className="text-red-500 hover:text-red-700">
-                                                    <TrashIcon className="h-5 w-5" />
-                                                </button>
+                                            {/* Subir archivo y vista previa (imagen) */}
+                                            <div className="mt-3">
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="file"
+                                                        accept={getResourceAccept(res.type)}
+                                                        id={`resource-file-${i}`}
+                                                        className="sr-only"
+                                                        onChange={(e) => handleResourceFileUpload(i, e)}
+                                                    />
+                                                    <label
+                                                        htmlFor={`resource-file-${i}`}
+                                                        className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 cursor-pointer hover:bg-blue-100 transition-colors"
+                                                    >
+                                                        <UploadIcon className="h-4 w-4" />
+                                                        {uploadingResource === i
+                                                            ? 'Subiendo...'
+                                                            : `Subir ${getResourceUploadLabel(res.type)}`}
+                                                    </label>
+                                                    {res.url && (
+                                                        <span className="text-xs text-gray-400 truncate max-w-[260px]">{res.url}</span>
+                                                    )}
+                                                </div>
+                                                {res.type === 'image' && res.url.trim() !== '' && (
+                                                    <div className="mt-2">
+                                                        <img
+                                                            src={res.url}
+                                                            alt={`Vista previa del recurso ${i + 1}`}
+                                                            className="max-h-40 w-auto rounded-md border border-gray-300 object-contain bg-white"
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                        />
+                                                        <p className="text-xs text-gray-400 mt-1">Vista previa de la imagen</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}

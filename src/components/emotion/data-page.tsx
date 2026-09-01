@@ -19,6 +19,7 @@ const EmotionDataPage: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(12);
     const [isLoading, setIsLoading] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; emotion: Emotion | null }>({
         show: false,
         emotion: null,
@@ -27,7 +28,7 @@ const EmotionDataPage: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const response = await getAll(currentPage, pageSize);
+            const response = await getAll(currentPage, pageSize, { isActive: statusFilter });
             setData(response.data);
             setTotal(response.total);
         } catch (error) {
@@ -38,7 +39,7 @@ const EmotionDataPage: React.FC = () => {
         }
     };
 
-    useEffect(() => { loadData(); }, [currentPage, pageSize, refreshData]);
+    useEffect(() => { loadData(); }, [currentPage, pageSize, refreshData, statusFilter]);
 
     const handleNew = () => {
         openTab('/Emocion/new', 'Nueva emoción', <EmotionComponent />);
@@ -86,6 +87,17 @@ const EmotionDataPage: React.FC = () => {
             searchEntity="emotions"
             onSearchData={(results) => setData(results as Emotion[])}
             onSearchLoading={setIsLoading}
+            filter={
+                <select
+                    value={statusFilter}
+                    onChange={(e) => { setStatusFilter(e.target.value as any); setCurrentPage(1); }}
+                    className="rounded-md border border-gray-300 px-3 py-[7px] text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
+                >
+                    <option value="all">Todos los estados</option>
+                    <option value="active">Activas</option>
+                    <option value="inactive">Inactivas</option>
+                </select>
+            }
             emptyMessage="No hay emociones registradas"
             columns={[
                 { key: 'name', label: 'Nombre', render: (e: Emotion) => e.name, className: 'font-medium w-36' },

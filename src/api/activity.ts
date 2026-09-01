@@ -5,6 +5,12 @@
 
 import { Activity } from '@/models/activity.entity';
 import api from '@/api/axios-instance';
+import { config } from '@/config/config';
+
+const environment = process.env.NODE_ENV || 'development';
+const configAPI = {
+    baseURL: config[environment].apiDashboard,
+};
 
 // ─── DTOs ────────────────────────────────────────────────────────────
 
@@ -35,11 +41,46 @@ export interface TodayActivityResponse {
     };
 }
 
+export interface ActivityListFilters {
+    type?: 'all' | 'reto' | 'evento_personal' | 'actividad_pares' | 'otro';
+    isActive?: 'all' | 'active' | 'inactive';
+}
+
+/**
+ * Sube un archivo multimedia para usarlo como recurso de actividad.
+ * POST /file-upload/upload (multipart, GridFS) → devuelve fileId y URL de stream.
+ * @param file Archivo (imagen jpg/jpeg/png/gif/webp ≤5MB, video/audio ≤200MB)
+ * @returns URL absoluta del archivo subido, o null si falla.
+ */
+export const uploadResourceFile = async (file: File): Promise<string | null> => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await api.post('/file-upload/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const fileId = res.data?.fileId;
+        if (!fileId) return null;
+        // URL absoluta para que funcione en web y mobile
+        return `${configAPI.baseURL}/file-upload/stream/${fileId}`;
+    } catch (error) {
+        console.error('Error al subir archivo:', error);
+        return null;
+    }
+};
+
 // ─── Funciones API ────────────────────────────────────────────────────
 
-export const getAll = async (page: number, limit: number): Promise<{ docs: Activity[]; totalDocs: number }> => {
+export const getAll = async (
+    page: number,
+    limit: number,
+    filters: ActivityListFilters = {},
+): Promise<{ docs: Activity[]; totalDocs: number }> => {
     try {
-        const res = await api.get('/api/activities/all', { params: { page, limit } });
+        const params: Record<string, any> = { page, limit };
+        if (filters.type && filters.type !== 'all') params.type = filters.type;
+        if (filters.isActive && filters.isActive !== 'all') params.isActive = filters.isActive;
+        const res = await api.get('/api/activities/all', { params });
         return {
             docs: res.data?.docs || [],
             totalDocs: res.data?.totalDocs || 0,

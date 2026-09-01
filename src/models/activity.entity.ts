@@ -19,7 +19,7 @@ export interface Activity extends BaseModel {
     title: string;
     description?: string;
     resources?: Array<{
-        type: 'video' | 'audio';
+        type: 'video' | 'audio' | 'image';
         url: string;
         duration?: number;
         metadata?: Record<string, any>;
@@ -34,6 +34,7 @@ export interface Activity extends BaseModel {
     }>;
     difficulty: number;
     isActive: boolean;
+    type?: 'reto' | 'evento_personal' | 'actividad_pares' | 'otro';
     schedule?: {
         date: Date;
         weekNumber: number;
@@ -51,7 +52,7 @@ export class Activity implements BaseModel {
     title!: string;
     description?: string;
     resources?: Array<{
-        type: 'video' | 'audio';
+        type: 'video' | 'audio' | 'image';
         url: string;
         duration?: number;
         metadata?: Record<string, any>;
@@ -66,6 +67,7 @@ export class Activity implements BaseModel {
     }>;
     difficulty: number = 3;
     isActive: boolean = true;
+    type?: 'reto' | 'evento_personal' | 'actividad_pares' | 'otro' = 'evento_personal';
     schedule?: {
         date: Date;
         weekNumber: number;
